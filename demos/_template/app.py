@@ -71,13 +71,14 @@ if records.empty:
 else:
     view_student = st.selectbox("달력에서 감정을 보고 싶은 학생을 선택하세요.", STUDENT_LIST, key="calendar_student")
 
+    # 달력에 표시할 연,월 저장 - session_state로 관리
     today = date.today()
     if "calendar_year" not in st.session_state:
         st.session_state.calendar_year = today.year
     if "calendar_month" not in st.session_state:
         st.session_state.calendar_month = today.month
 
-    # 월 이동
+    # 월 이동 화살표 UI 및 연, 월 표시
     col_prev, col_month, col_next = st.columns([1,2,1])
     with col_prev:
         if st.button("←", key="prev_month"):
@@ -101,64 +102,67 @@ else:
 
     yy = st.session_state.calendar_year
     mm = st.session_state.calendar_month
-    cal = calendar.Calendar(firstweekday=6)  # 6: Sunday (한국식)
-    month_days = cal.monthdatescalendar(yy, mm)
+    cal = calendar.Calendar(firstweekday=6)  # 6: Sunday (한국식)  
+    month_days = cal.monthdatescalendar(yy, mm)  # 각 주별 날짜 리스트(달력이 5줄 또는 6줄됨)
 
-    # 감정 기록
+    # 감정 기록이 있는 부분만 추출
     stu_df = records[records["학생"] == view_student].copy()
     stu_df['날짜'] = pd.to_datetime(stu_df['날짜'])
     stu_df['date'] = stu_df["날짜"].dt.date
-    stu_mood_map = dict(zip(stu_df['date'], stu_df['감정']))
-
-    # 색상 셋업
-    mood_to_idx = {mood: i+1 for i, (mood, _) in enumerate(MOOD_LIST)} # 0: 셀없음용
-    idx_to_color = ["#FFFFFF"] + [color for (mood, color) in MOOD_LIST]  # 0은 흰색
+    stu_mood_map = dict(zip(stu_df['date'], zip(stu_df['감정'], stu_df['색상'])))
 
     z = []
     text = []
+    customdata = []
     for week in month_days:
         z_row = []
         text_row = []
+        custom_row = []
         for d in week:
             if d.month != mm:
-                z_row.append(0)
+                # 타월: 흰색
+                z_row.append("#FFFFFF")
                 text_row.append("")
+                custom_row.append("")
             else:
-                mood = stu_mood_map.get(d, "")
-                color_idx = mood_to_idx.get(mood, 0)
-                z_row.append(color_idx)
-                cell = f"{d.day}<br>{mood}" if mood else f"{d.day}"
+                mood, color = stu_mood_map.get(d, ("", "#F5F5F5")) # 기록 없으면 연한 회색
+                cell = f"{d.day}<br>{mood if mood else ''}"
+                z_row.append(color)
                 text_row.append(cell)
+                custom_row.append(mood)
         z.append(z_row)
         text.append(text_row)
+        customdata.append(custom_row)
 
-    # colorscale을 감정 색상 그대로 적용 (index 사용)
-    n_moods = len(MOOD_LIST)
-    colorscale = []
-    for i, color in enumerate(idx_to_color):
-        colorscale.append([i/(n_moods), color])
-        colorscale.append([(i+1)/(n_moods), color])
-
+    # Plotly Figure 생성
     fig = go.Figure(
         data=go.Heatmap(
-            z=z,
+            z=[[0 for x in range(7)] for y in range(len(z))],  # dummy for heatmap, 실색상은 shape에서 채우기
             x=['일','월','화','수','목','금','토'],
             y=[f"주 {i+1}" for i in range(len(z))],
-            text=text,
-            hoverinfo='text',
             showscale=False,
-            colorscale=colorscale,
+            hoverinfo='text',
+            text=text,
             xgap=2, ygap=2,
-            zmin=0,
-            zmax=n_moods
+            colorscale=[[0,"white"], [1,"white"]],  # shape로 채우므로 색상 무의미(white)
         )
     )
 
-    # 날짜+감정 텍스트 (annotation)
+    # 날짜 셀 배경색 그리기 및 텍스트 annotation
     for i, week in enumerate(z):
-        for j, color_idx in enumerate(week):
+        for j, cell_color in enumerate(week):
+            # 배경색 shape 추가
+            fig.add_shape(
+                type="rect",
+                x0=j-0.5, y0=i-0.5,
+                x1=j+0.5, y1=i+0.5,
+                fillcolor=cell_color,
+                line=dict(width=1,color="#e2e2e2"),
+                layer="below"
+            )
+            # 텍스트 annotation
             ann_text = text[i][j]
-            font_color = "#222" if color_idx != 0 else "#AAA"
+            font_color = "#222" if cell_color not in {"#FFFFFF", "#F5F5F5"} else "#AAA"
             fig.add_annotation(
                 x=j, y=i,
                 text=ann_text,
@@ -180,7 +184,7 @@ else:
     fig.update_yaxes(
         tickmode='array',
         tickvals=list(range(len(z))),
-        ticktext=["" for _ in range(len(z))],
+        ticktext=["" for _ in range(len(z))],  # y축 레이블 숨김
         showgrid=False,
         zeroline=False,
         autorange="reversed"
