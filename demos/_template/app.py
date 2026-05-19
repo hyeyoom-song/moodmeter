@@ -1,17 +1,4 @@
 import streamlit as st
-
-# 페이지 설정
-st.set_page_config(
-    page_title="학급정서기록",
-    page_icon="📝",
-    layout="centered"
-)
-
-# 페이지 상단 제목 및 한 줄 설명
-st.title("학급정서기록")
-st.markdown("초등 담임선생님을 위한 학생 감정 기록 웹앱입니다.")
-
-import streamlit as st
 import pandas as pd
 from datetime import date
 
