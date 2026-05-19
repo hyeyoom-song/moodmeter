@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import date
 
-# 무드미터 감정/색상 정의 (이전과 동일)
+# 무드미터 감정/색상 정의(동일)
 MOOD_LIST = [
     ("분노", "#FF5C5C"), ("불안", "#FF8C42"), ("좌절", "#FF8888"), ("초조", "#FFB347"),
     ("신남", "#FFE156"), ("행복", "#FFFF6F"), ("자신감", "#FFD700"), ("의욕", "#FFEF7E"),
@@ -26,19 +26,15 @@ with col2:
 st.divider()
 st.markdown("**오늘의 감정을 선택해 주세요**")
 
-# 감정 선택 UI - 커스텀 컬러 박스
+# 감정 선택 UI - 컬러 사각형+글씨 한 번만!
 if "selected_mood" not in st.session_state:
-    st.session_state.selected_mood = list(MOOD_DICT.keys())[0]
+    st.session_state.selected_mood = MOOD_LIST[0][0]
 
 cols = st.columns(4)
 for idx, (mood, color) in enumerate(MOOD_LIST):
     with cols[idx % 4]:
-        btn = st.button(
-            f"{mood}",
-            key=f"mood_{mood}",
-            help=mood,
-            use_container_width=True
-        )
+        # 컬러 사각형+글씨를 한 번만 그리고, 클릭 시 선택되는 버튼 활용
+        selected = (st.session_state.selected_mood == mood)
         box_html = f"""
         <div style='
             background:{color};
@@ -51,16 +47,18 @@ for idx, (mood, color) in enumerate(MOOD_LIST):
             font-weight:bold;
             font-size:17px;
             box-shadow:0 1px 6px rgba(0,0,0,0.07);
-            border:2px solid #ecebeb;
+            border:3px solid {"#222" if selected else "#ecebeb"};
+            cursor:pointer;
         '>
             {mood}
         </div>
         """
-        st.markdown(box_html, unsafe_allow_html=True)
-        if btn:
+        # markdown을 클릭으로 직접 감지할 수 없으니, 버튼에 html label 사용
+        if st.button(box_html, key=f"mood_{mood}", use_container_width=True):
             st.session_state.selected_mood = mood
+        # 버튼 label에 HTML이 잘 먹도록 unsafe_allow_html 사용
+        st.markdown(f"", unsafe_allow_html=True)  # placeholder
 
-# 선택중일 때 테두리 강조
 selected_mood = st.session_state.selected_mood
 selected_color = MOOD_DICT[selected_mood]
 st.markdown(f"#### 선택된 감정: <span style='background:{selected_color}; color:#222; border-radius:9px; padding:4px 15px;'>{selected_mood}</span>", unsafe_allow_html=True)
