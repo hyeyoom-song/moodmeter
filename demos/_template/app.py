@@ -1,81 +1,47 @@
-"""
-{{프로젝트 제목}} — Streamlit 시작 골격
-
-⚠️ 이 파일은 빈 골격입니다. Copilot에게 다음 순서로 프롬프트하세요.
-   1) 사이드바 CSV 업로더 만들기
-   2) 표 + 응답자 수 메트릭 카드 추가
-   3) 본인 명세의 기능 2, 3 추가
-
-학생들이 손대지 않아도 되는 영역(인코딩 처리, 페이지 설정)은 미리 작성되어 있습니다.
-"""
-
-import io
-
-import pandas as pd
 import streamlit as st
 
+# 페이지 설정
 st.set_page_config(
-    page_title="{{프로젝트 제목}}",
-    page_icon="📊",
-    layout="wide",
+    page_title="학급정서기록",  # 페이지 상단의 제목
+    page_icon="📝",  # 브라우저 탭에 표시될 아이콘
+    layout="wide"
 )
 
-st.title("📊 {{프로젝트 제목}}")
-st.caption("{{한 줄 요약}}")
+# 제목 및 한 줄 설명
+st.title("📝 학급정서기록")
+st.markdown("""
+초등 담임교사를 위한 감정기록・칭찬샤워・감정변화 그래프 자동화 웹앱입니다.  
+CSV 업로드로 학생의 무드미터 변화를 시각적으로 확인할 수 있습니다.
+""")
 
+# 사이드바 메뉴
+st.sidebar.title("메뉴")
+menu = st.sidebar.radio("기능 선택", ("무드미터 감정기록", "칭찬샤워", "감정변화 조회"))
 
-# ──────────────────────────────────────────────────────────────
-# 공용 유틸 (수정 불필요) — 엑셀 CP949 / 메모장 UTF-8 자동 처리
-# ──────────────────────────────────────────────────────────────
-def read_csv_any(uploaded_file) -> pd.DataFrame:
-    raw = uploaded_file.read()
-    for enc in ("utf-8-sig", "utf-8", "cp949", "euc-kr"):
-        try:
-            return pd.read_csv(io.BytesIO(raw), encoding=enc)
-        except UnicodeDecodeError:
-            continue
-    return pd.read_csv(io.BytesIO(raw), encoding="utf-8", errors="replace")
+# 메뉴별 기본 골격(틀)
+if menu == "무드미터 감정기록":
+    st.header("1. 무드미터 감정기록")
+    st.정보("학생이 날짜와 이름, 감정 색상, 감정 단어를 선택하고 저장할 수 있습니다.\n저장된 기록은 테이블과 색상표로 시각화됩니다.")
+    # [여기에 무드미터 기록 관련 기능 추가 예정]
 
+elif menu == "칭찬샤워":
+    st.header("2. 칭찬샤워")
+    st.정보("오늘의 주인공 학생을 확인하고, 다른 학생들이 칭찬을 입력할 수 있습니다.\n학부모 알림장용 문구 자동 생성 및 복사 기능도 제공됩니다.")
+    # [여기에 칭찬샤워 관련 기능 추가 예정]
 
-# ──────────────────────────────────────────────────────────────
-# 사이드바: 파일 업로더
-# ──────────────────────────────────────────────────────────────
-with st.sidebar:
-    st.header("📂 데이터 업로드")
-    uploaded = st.file_uploader("CSV 파일", type=["csv"])
-    st.markdown(
-        """
-        **필수 컬럼** (본인 명세에 맞게 수정)
-        - `컬럼1`
-        - `컬럼2`
+elif menu == "감정변화 조회":
+    st.header("3. 감정변화 및 칭찬기록 조회")
+    st.정보("학생 이름과 조회 기간을 설정하여 감정변화 그래프와 칭찬 내용을 요약할 수 있습니다.\n생기부 작성 초안 문구도 자동 생성됩니다.")
+    # [여기에 감정변화 그래프 기능 추가 예정]
 
-        샘플 파일이 필요하면 `sample_data.csv`를 사용하세요.
-        """
-    )
+# CSV 업로드 예시(향후 3번 메뉴에서 실제 활용)
+st.sidebar.subheader("CSV 파일 업로드")
+uploaded_file = st.sidebar.file_uploader("학생별 무드미터 데이터(CSV)", type=["csv"])
+if uploaded_file:
+    st.sidebar.success("CSV 파일이 업로드되었습니다.")
 
-if uploaded is None:
-    st.info("👈 왼쪽 사이드바에서 CSV 파일을 업로드하세요.")
-    st.stop()
+# 사용자를 위한 안내 메시지
+st.sidebar.markdown("---")
+st.sidebar.markdown("📌 문의: hyeyoom-song")
 
-df = read_csv_any(uploaded)
-
-
-# ──────────────────────────────────────────────────────────────
-# 기능 1. (TODO) 표 + 상단 요약
-# ──────────────────────────────────────────────────────────────
-st.subheader("① 데이터 확인")
-st.dataframe(df, use_container_width=True, hide_index=True)
-
-
-# ──────────────────────────────────────────────────────────────
-# 기능 2. (TODO) 본인 명세의 기능 2를 여기에 작성
-# ──────────────────────────────────────────────────────────────
-st.subheader("② (작성 예정)")
-st.write("Copilot에게: '기능 2를 추가해줘. 사용자 동작은 ___, 화면 결과는 ___'")
-
-
-# ──────────────────────────────────────────────────────────────
-# 기능 3. (TODO) 본인 명세의 기능 3을 여기에 작성
-# ──────────────────────────────────────────────────────────────
-st.subheader("③ (작성 예정)")
-st.write("Copilot에게: '기능 3을 추가해줘. ___'")
+# (이 이후부터 각 기능을 개발해서 추가)
