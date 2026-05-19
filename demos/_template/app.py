@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
+import plotly.express as px
 
 # 감정/색상 정의
 MOOD_LIST = [
@@ -73,7 +74,6 @@ else:
     # 색상 컬럼을 제외한 표시용 데이터프레임 생성
     display_records = records.drop(columns=["색상"])
     def highlight_mood(s):
-        # 색상 정보는 records에서 따옴
         color = records.loc[s.name, "색상"]
         return [f'background-color: {color}; color: #222; font-weight: bold;' if col == "감정" else '' for col in s.index]
     st.dataframe(
@@ -82,5 +82,21 @@ else:
         height=480
     )
     st.markdown("#### 감정 분포 그래프 (학생별)")
-    by_student = records.groupby(["학생", "감정"]).size().unstack(fill_value=0)
-    st.bar_chart(by_student)
+    # 감정 분포 집계
+    count_df = records.groupby(["학생", "감정"]).size().reset_index(name="횟수")
+    # 감정별 색상 mapping
+    color_map = {mood: color for mood, color in MOOD_LIST}
+    # Plotly bar chart
+    fig = px.bar(
+        count_df,
+        x="학생",
+        y="횟수",
+        color="감정",
+        color_discrete_map=color_map,
+        barmode="group",
+        category_orders={"감정": [m[0] for m in MOOD_LIST]}
+    )
+    fig.update_layout(
+        legend_title_text="감정"
+    )
+    st.plotly_chart(fig, use_container_width=True)
