@@ -70,11 +70,14 @@ records = st.session_state.records
 if records.empty:
     st.info("아직 감정 기록이 없습니다.")
 else:
+    # 색상 컬럼을 제외한 표시용 데이터프레임 생성
+    display_records = records.drop(columns=["색상"])
     def highlight_mood(s):
-        color = s["색상"]
+        # 색상 정보는 records에서 따옴
+        color = records.loc[s.name, "색상"]
         return [f'background-color: {color}; color: #222; font-weight: bold;' if col == "감정" else '' for col in s.index]
     st.dataframe(
-        records.style.apply(highlight_mood, axis=1),
+        display_records.style.apply(highlight_mood, axis=1),
         use_container_width=True,
         height=480
     )
