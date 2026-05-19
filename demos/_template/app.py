@@ -28,13 +28,13 @@ uploaded_file = st.sidebar.file_uploader("학생별 무드미터 데이터(CSV)"
 if uploaded_file is not None:
     # 파일이 업로드되면 데이터프레임으로 읽기
     df = pd.read_csv(uploaded_file)
-    st.성공("CSV 파일이 업로드되었습니다. 전체 데이터를 아래에 보여줍니다.")
+    st.success("CSV 파일이 업로드되었습니다. 전체 데이터를 아래에 보여줍니다.")
 
     # 데이터프레임 전체 보여주기
     st.dataframe(df)
 else:
     # 파일이 업로드되기 전 안내 메시지
-    st.정보("사이드바에서 CSV를 업로드하세요.")
+    st.info("사이드바에서 CSV를 업로드하세요.")
 
 # 문의 정보
 st.sidebar.markdown("---")
