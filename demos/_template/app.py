@@ -38,9 +38,9 @@ if 'praise_shower' not in st.session_state:
 # 오늘, 이번달, 어제
 this_year, this_month = date.today().year, date.today().month
 today = date.today()
-yesterday = today - timedelta(days=1)
+어제 = today - timedelta(days=1)
 today_key = today.strftime("%Y-%m-%d")
-yesterday_key = yesterday.strftime("%Y-%m-%d")
+어제_key = yesterday.strftime("%Y-%m-%d")
 
 ### ---- 사이드바 ----
 st.set_page_config(page_title="학급 정서 기록", page_icon="🧡", layout="centered")
@@ -54,7 +54,7 @@ menu = st.sidebar.radio(
 
 
 #############################################
-### 1. 무드미터 PAGE
+### 1. 무드미터 PAGE (오류 수정 본문)
 #############################################
 if menu == "무드미터":
     st.title('학급 정서 기록🧡')
@@ -106,15 +106,16 @@ if menu == "무드미터":
     st.markdown(btn_css, unsafe_allow_html=True)
 
     # 선택된 감정을 세션에 기록(학생 별)
-    if f"emotion_{selected_name}_{select_ym}_{select_d}" not in st.session_state:
-        st.session_state[f"emotion_{selected_name}_{select_ym}_{select_d}"] = None
+    state_key = f"emotion_{selected_name}_{select_ym}_{select_d}"
+    if state_key not in st.session_state:
+        st.session_state[state_key] = None
 
     for r in range(4):
         for c in range(4):
             idx = r * 4 + c
             emotion, emoji, color = EMOTIONS[idx]
-            selected = (st.session_state[f"emotion_{selected_name}_{select_ym}_{select_d}"] == idx)
-            html = f"""<div class="emotion-btn{' selected' if selected else ''}" style="background:{color};" onclick="var event = new CustomEvent('emotionSelect', {{detail: {idx}}}); document.dispatchEvent(event)">{emoji}<br/><span style="font-size:0.6em;">{emotion}</span></div>"""
+            selected = (st.session_state[state_key] == idx)
+            html = f"""<div class="emotion-btn{' selected' if selected else ''}" style="background:{color};" onclick="var event = new CustomEvent('emotionSelect', {{detail: {idx}}}); document.dispatchEvent(event);">{emoji}<br><span style='font-size:0.6em'>{emotion}</span></div>"""
             btn_cols[r][c].markdown(html, unsafe_allow_html=True)
 
     # 자바스크립트로 감정 선택(모서리 둥근 버튼 동작)
@@ -129,15 +130,22 @@ if menu == "무드미터":
     emotion_options = [f"{emoji} {emotion}" for (emotion, emoji, color) in EMOTIONS]
     # 모바일 호환 및 JS 미지원 브라우저 대비
     box_idx = st.selectbox("또는 감정을 선택하세요", options=list(range(len(EMOTIONS))), format_func=lambda x: emotion_options[x])
-    # JS에서 값이 오면 세션에 저장
-    js_val = st.experimental_get_query_params().get('emotion_idx')
-    if js_val:
-        # 쿼리파람으로 받은 경우 강제 적용
-        st.session_state[f"emotion_{selected_name}_{select_ym}_{select_d}"] = int(js_val[0])
-    elif box_idx is not None:
-        st.session_state[f"emotion_{selected_name}_{select_ym}_{select_d}"] = int(box_idx)
+    
+    # --- 오류 수정: 쿼리파람 에러 방지. ---
+    # 쿼리 파라미터 안전하게 처리 (None될 수 있음)
+    try:
+        params = st.experimental_get_query_params()
+        js_val = params.get('emotion_idx') if params 및 'emotion_idx' in params else None
+    except Exception:
+        js_val = None
 
-    emotion_idx = st.session_state[f"emotion_{selected_name}_{select_ym}_{select_d}"]
+    # JS에서 값이 오면 세션에 저장
+    if js_val:
+        st.session_state[state_key] = int(js_val[0])
+    elif box_idx is not None:
+        st.session_state[state_key] = int(box_idx)
+
+    emotion_idx = st.session_state[state_key]
 
     # (3) 감정 입력 버튼
     if st.button("감정 입력"):
@@ -202,7 +210,7 @@ elif menu == "오늘의 주인공":
 
     # 룰렛 대상 학생 리스트 생성
     # 어제 뽑힌 학생은 오늘 룰렛 대상에서 빼지만 종합 리스트에는 보임
-    exclude_name = st.session_state.hero_pick_history.get(yesterday_key, None)
+    exclude_name = st.session_state.hero_pick_history.get(어제_key, None)
     roulette_names = STUDENT_LIST.copy()
     available_names = [name for name in STUDENT_LIST if name != exclude_name]
     
