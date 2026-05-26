@@ -3,6 +3,9 @@ import pandas as pd
 from datetime import date, datetime, timedelta
 import plotly.graph_objects as go
 import calendar
+import random
+import time
+import numpy as np
 
 # 감정/색상 정의
 MOOD_LIST = [
@@ -16,280 +19,358 @@ COLOR_DICT = {mood: color for mood, color in MOOD_LIST}
 STUDENT_LIST = ["김철수", "이영희", "박민준", "최다은", "정하늘"]
 
 st.set_page_config(page_title="학급정서기록", page_icon="📝")
+
+# ----------- 사이드 메뉴 -----------
+st.sidebar.title("MENU")
+tab_key = st.sidebar.radio(
+    "메뉴를 선택하세요",
+    ("오늘의 무드미터", "오늘의 주인공", "오늘의 칭찬샤워"),
+    index=0
+)
+
 st.title("학급정서기록")
 st.markdown("초등 담임선생님을 위한 학생 감정 기록 웹앱입니다.")
 st.divider()
 
-col1, col2 = st.columns(2)
-with col1:
-    selected_date = st.date_input("날짜 선택", value=date.today())
-with col2:
-    selected_student = st.selectbox("학생 선택", STUDENT_LIST)
+# ===========================  
+# 1. 오늘의 무드미터
+# ===========================
+if tab_key == "오늘의 무드미터":
+    col1, col2 = st.columns(2)
+    with col1:
+        selected_date = st.date_input("날짜 선택", value=date.today())
+    with col2:
+        selected_student = st.selectbox("학생 선택", STUDENT_LIST)
 
-st.divider()
-st.markdown("**오늘의 감정을 선택해 주세요**")
+    st.divider()
+    st.markdown("**오늘의 감정을 선택해 주세요**")
 
-mood_names = [m[0] for m in MOOD_LIST]
-selected_mood = st.radio(
-    "감정 선택",
-    options=mood_names,
-    horizontal=True,
-    index=0
-)
-selected_color = MOOD_DICT[selected_mood]
+    mood_names = [m[0] for m in MOOD_LIST]
+    selected_mood = st.radio(
+        "감정 선택",
+        options=mood_names,
+        horizontal=True,
+        index=0
+    )
+    selected_color = MOOD_DICT[selected_mood]
 
-st.markdown(
-    f"<span style='display:inline-block; vertical-align:middle;'>"
-    f"<span style='display:inline-block; width:32px; height:32px;"
-    f"background:{selected_color}; border-radius:7px; border:1.8px solid #888; margin-right:12px;'></span>"
-    f"<span style='font-size:24px; vertical-align:middle; color:#222; font-weight:bold'>{selected_mood}</span></span>",
-    unsafe_allow_html=True,
-)
+    st.markdown(
+        f"<span style='display:inline-block; vertical-align:middle;'>"
+        f"<span style='display:inline-block; width:32px; height:32px;"
+        f"background:{selected_color}; border-radius:7px; border:1.8px solid #888; margin-right:12px;'></span>"
+        f"<span style='font-size:24px; vertical-align:middle; color:#222; font-weight:bold'>{selected_mood}</span></span>",
+        unsafe_allow_html=True,
+    )
 
-if 'records' not in st.session_state:
-    st.session_state.records = pd.DataFrame(columns=["날짜", "학생", "감정", "색상"])
+    if 'records' not in st.session_state:
+        st.session_state.records = pd.DataFrame(columns=["날짜", "학생", "감정", "색상"])
 
-if st.button("감정 기록 저장"):
+    if st.button("감정 기록 저장"):
+        records = st.session_state.records
+        mask = (records["날짜"] == str(selected_date)) & (records["학생"] == selected_student)
+        new_row = pd.DataFrame([[str(selected_date), selected_student, selected_mood, selected_color]],
+                            columns=["날짜", "학생", "감정", "색상"])
+        if mask.any():
+            st.session_state.records.loc[mask, ["감정", "색상"]] = (selected_mood, selected_color)
+            st.success(f"{selected_student} 학생의 [{selected_date}] 감정 기록을 수정했습니다.")
+        else:
+            st.session_state.records = pd.concat([records, new_row], ignore_index=True)
+            st.success(f"{selected_student} 학생의 [{selected_date}] 감정 기록을 저장했습니다.")
+
+    st.divider()
+    st.markdown("### 학생별 감정 달력")
+
     records = st.session_state.records
-    mask = (records["날짜"] == str(selected_date)) & (records["학생"] == selected_student)
-    new_row = pd.DataFrame([[str(selected_date), selected_student, selected_mood, selected_color]],
-                           columns=["날짜", "학생", "감정", "색상"])
-    if mask.any():
-        st.session_state.records.loc[mask, ["감정", "색상"]] = (selected_mood, selected_color)
-        st.성공(f"{selected_student} 학생의 [{selected_date}] 감정 기록을 수정했습니다.")
+
+    if records.empty:
+        st.info("아직 감정 기록이 없습니다.")
     else:
-        st.session_state.records = pd.concat([records, new_row], ignore_index=True)
-        st.성공(f"{selected_student} 학생의 [{selected_date}] 감정 기록을 저장했습니다.")
+        view_student = st.selectbox("달력에서 감정을 보고 싶은 학생을 선택하세요.", STUDENT_LIST, key="calendar_student")
 
-st.divider()
-st.markdown("### 학생별 감정 달력")
+        today = date.today()
+        if "calendar_year" not in st.session_state:
+            st.session_state.calendar_year = today.year
+        if "calendar_month" not in st.session_state:
+            st.session_state.calendar_month = today.month
 
-records = st.session_state.records
-
-if records.empty:
-    st.info("아직 감정 기록이 없습니다.")
-else:
-    view_student = st.selectbox("달력에서 감정을 보고 싶은 학생을 선택하세요.", STUDENT_LIST, key="calendar_student")
-
-    # 달력에 표시할 연,월 저장 - session_state로 관리
-    today = date.today()
-    if "calendar_year" not in st.session_state:
-        st.session_state.calendar_year = today.year
-    if "calendar_month" not in st.session_state:
-        st.session_state.calendar_month = today.month
-
-    # 월 이동 화살표 UI 및 연, 월 표시
-    col_prev, col_month, col_next = st.columns([1,2,1])
-    with col_prev:
-        if st.button("←", key="prev_month"):
-            if st.session_state.calendar_month == 1:
-                st.session_state.calendar_month = 12
-                st.session_state.calendar_year -= 1
-            else:
-                st.session_state.calendar_month -= 1
-    with col_month:
-        st.markdown(
-            f"<h5 style='text-align:center'>{st.session_state.calendar_year}년 {st.session_state.calendar_month}월</h5>",
-            unsafe_allow_html=True
-        )
-    with col_next:
-        if st.button("→", key="next_month"):
-            if st.session_state.calendar_month == 12:
-                st.session_state.calendar_month = 1
-                st.session_state.calendar_year += 1
-            else:
-                st.session_state.calendar_month += 1
-
-    yy = st.session_state.calendar_year
-    mm = st.session_state.calendar_month
-    cal = calendar.Calendar(firstweekday=6)  # 6: Sunday (한국식)  
-    month_days = cal.monthdatescalendar(yy, mm)  # 각 주별 날짜 리스트(달력이 5줄 또는 6줄됨)
-
-    # 감정 기록이 있는 부분만 추출
-    stu_df = records[records["학생"] == view_student].copy()
-    stu_df['날짜'] = pd.to_datetime(stu_df['날짜'])
-    stu_df['date'] = stu_df["날짜"].dt.date
-    stu_mood_map = dict(zip(stu_df['date'], zip(stu_df['감정'], stu_df['색상'])))
-
-    z = []
-    text = []
-    customdata = []
-    for week in month_days:
-        z_row = []
-        text_row = []
-        custom_row = []
-        for d in week:
-            if d.month != mm:
-                # 타월: 흰색
-                z_row.append("#FFFFFF")
-                text_row.append("")
-                custom_row.append("")
-            else:
-                mood, color = stu_mood_map.get(d, ("", "#F5F5F5")) # 기록 없으면 연한 회색
-                cell = f"{d.day}<br>{mood if mood else ''}"
-                z_row.append(color)
-                text_row.append(cell)
-                custom_row.append(mood)
-        z.append(z_row)
-        text.append(text_row)
-        customdata.append(custom_row)
-
-    # Plotly Figure 생성
-    fig = go.Figure(
-        data=go.Heatmap(
-            z=[[0 for x in range(7)] for y in range(len(z))],  # dummy for heatmap, 실색상은 shape에서 채우기
-            x=['일','월','화','수','목','금','토'],
-            y=[f"주 {i+1}" for i in range(len(z))],
-            showscale=False,
-            hoverinfo='text',
-            text=text,
-            xgap=2, ygap=2,
-            colorscale=[[0,"white"], [1,"white"]],  # shape로 채우므로 색상 무의미(white)
-        )
-    )
-
-    # 날짜 셀 배경색 그리기 및 텍스트 annotation
-    for i, week in enumerate(z):
-        for j, cell_color in enumerate(week):
-            # 배경색 shape 추가
-            fig.add_shape(
-                type="rect",
-                x0=j-0.5, y0=i-0.5,
-                x1=j+0.5, y1=i+0.5,
-                fillcolor=cell_color,
-                line=dict(width=1,color="#e2e2e2"),
-                layer="below"
+        col_prev, col_month, col_next = st.columns([1,2,1])
+        with col_prev:
+            if st.button("←", key="prev_month"):
+                if st.session_state.calendar_month == 1:
+                    st.session_state.calendar_month = 12
+                    st.session_state.calendar_year -= 1
+                else:
+                    st.session_state.calendar_month -= 1
+        with col_month:
+            st.markdown(
+                f"<h5 style='text-align:center'>{st.session_state.calendar_year}년 {st.session_state.calendar_month}월</h5>",
+                unsafe_allow_html=True
             )
-            # 텍스트 annotation
-            ann_text = text[i][j]
-            font_color = "#222" if cell_color not in {"#FFFFFF", "#F5F5F5"} else "#AAA"
-            fig.add_annotation(
-                x=j, y=i,
-                text=ann_text,
-                showarrow=False,
-                font=dict(color=font_color, size=13),
-                align="center",
-                valign="middle"
+        with col_next:
+            if st.button("→", key="next_month"):
+                if st.session_state.calendar_month == 12:
+                    st.session_state.calendar_month = 1
+                    st.session_state.calendar_year += 1
+                else:
+                    st.session_state.calendar_month += 1
+
+        yy = st.session_state.calendar_year
+        mm = st.session_state.calendar_month
+        cal = calendar.Calendar(firstweekday=6)  # 6: Sunday
+        month_days = cal.monthdatescalendar(yy, mm)
+
+        stu_df = records[records["학생"] == view_student].copy()
+        stu_df['날짜'] = pd.to_datetime(stu_df['날짜'])
+        stu_df['date'] = stu_df["날짜"].dt.date
+        stu_mood_map = dict(zip(stu_df['date'], zip(stu_df['감정'], stu_df['색상'])))
+
+        z = []
+        text = []
+        customdata = []
+        for week in month_days:
+            z_row = []
+            text_row = []
+            custom_row = []
+            for d in week:
+                if d.month != mm:
+                    z_row.append("#FFFFFF")
+                    text_row.append("")
+                    custom_row.append("")
+                else:
+                    mood, color = stu_mood_map.get(d, ("", "#F5F5F5"))
+                    cell = f"{d.day}<br>{mood if mood else ''}"
+                    z_row.append(color)
+                    text_row.append(cell)
+                    custom_row.append(mood)
+            z.append(z_row)
+            text.append(text_row)
+            customdata.append(custom_row)
+
+        fig = go.Figure(
+            data=go.Heatmap(
+                z=[[0 for x in range(7)] for y in range(len(z))],
+                x=['일','월','화','수','목','금','토'],
+                y=[f"주 {i+1}" for i in range(len(z))],
+                showscale=False,
+                hoverinfo='text',
+                text=text,
+                xgap=2, ygap=2,
+                colorscale=[[0,"white"], [1,"white"]],
             )
+        )
 
-    # X,Y 축 세팅
-    fig.update_xaxes(
-        tickmode='array',
-        tickvals=list(range(7)),
-        ticktext=['일','월','화','수','목','금','토'],
-        side='top',
-        showgrid=False,
-        zeroline=False
-    )
-    fig.update_yaxes(
-        tickmode='array',
-        tickvals=list(range(len(z))),
-        ticktext=["" for _ in range(len(z))],  # y축 레이블 숨김
-        showgrid=False,
-        zeroline=False,
-        autorange="reversed"
-    )
-    fig.update_layout(
-        margin=dict(l=10,r=10,t=10,b=10),
-        plot_bgcolor="#fafafa",
-        paper_bgcolor="#fafafa",
-        height=320 if len(z)<6 else 390,
-        xaxis_fixedrange=True,
-        yaxis_fixedrange=True
-    )
+        for i, week in enumerate(z):
+            for j, cell_color in enumerate(week):
+                fig.add_shape(
+                    type="rect",
+                    x0=j-0.5, y0=i-0.5,
+                    x1=j+0.5, y1=i+0.5,
+                    fillcolor=cell_color,
+                    line=dict(width=1,color="#e2e2e2"),
+                    layer="below"
+                )
+                ann_text = text[i][j]
+                font_color = "#222" if cell_color not in {"#FFFFFF", "#F5F5F5"} else "#AAA"
+                fig.add_annotation(
+                    x=j, y=i,
+                    text=ann_text,
+                    showarrow=False,
+                    font=dict(color=font_color, size=13),
+                    align="center",
+                    valign="middle"
+                )
 
-    st.plotly_chart(fig, use_container_width=True)
+        fig.update_xaxes(
+            tickmode='array',
+            tickvals=list(range(7)),
+            ticktext=['일','월','화','수','목','금','토'],
+            side='top',
+            showgrid=False,
+            zeroline=False
+        )
+        fig.update_yaxes(
+            tickmode='array',
+            tickvals=list(range(len(z))),
+            ticktext=["" for _ in range(len(z))],
+            showgrid=False,
+            zeroline=False,
+            autorange="reversed"
+        )
+        fig.update_layout(
+            margin=dict(l=10,r=10,t=10,b=10),
+            plot_bgcolor="#fafafa",
+            paper_bgcolor="#fafafa",
+            height=320 if len(z)<6 else 390,
+            xaxis_fixedrange=True,
+            yaxis_fixedrange=True
+        )
 
-st.set_page_config(page_title="학급정서기록", page_icon="📝")
-
-TAB_LIST = ["오늘의 무드미터", "오늘의 주인공", "오늘의 칭찬샤워"]
-tab1, tab2, tab3 = st.tabs(TAB_LIST)
+        st.plotly_chart(fig, use_container_width=True)
 
 # ===========================  
-# 1. 오늘의 무드미터 (기존 코드 그대로)
+# 2. 오늘의 주인공 (룰렛)
 # ===========================
-with tab1:
-    # [이하 기존 무드미터 코드 복사/붙여넣기 - 질문의 코드 그대로]
-    # ... (생략: 위 질문의 코드를 그대로 이 블록에 넣으세요)
-    pass  # 실제코드로 대체
+elif tab_key == "오늘의 주인공":
+    st.header("오늘의 주인공 룰렛 🎡")
 
-# ===========================
-# 2. 오늘의 칭찬샤워
-# ===========================
-with tab3:
-    st.header("오늘의 칭찬샤워 🎉")
-    st.markdown("- **학생이름이 적힌 룰렛**에서 Start 버튼을 누르면, 오늘의 칭찬샤워 주인공이 선정됩니다!")
-
-    # 1. session_state에서 오늘 뽑힌 칭찬샤워 학생 기록 조회/저장
     today_str = str(date.today())
-    if 'compliment_pick_history' not in st.session_state:
-        st.session_state.compliment_pick_history = {}
+    if 'hero_pick_history' not in st.session_state:
+        st.session_state.hero_pick_history = {}
 
-    # history는 날짜별도 리스트
-    if today_str not in st.session_state.compliment_pick_history:
-        st.session_state.compliment_pick_history[today_str] = []
-        
-    today_picked = st.session_state.compliment_pick_history[today_str]
+    if today_str not in st.session_state.hero_pick_history:
+        st.session_state.hero_pick_history[today_str] = []
 
-    # Step1: 남은 학생 계산
-    remaining = [name for name in STUDENT_LIST if name not in today_picked]
-    # 모두 뽑혔으면, 초기화
+    picked = st.session_state.hero_pick_history[today_str]
+    remaining = [name for name in STUDENT_LIST if name not in picked]
+
     if len(remaining) == 0:
-        st.session_state.compliment_pick_history[today_str] = []
+        st.session_state.hero_pick_history[today_str] = []
         remaining = STUDENT_LIST.copy()
-        today_picked = []
+        picked = []
 
-    # Step2: 룰렛 효과 (아스키 아트 + time.sleep, 혹은 plotly pie/streamlit_drawable_widgets 등 다양한 방식 가능)
-    st.write("오늘 칭찬샤워 후보:", ", ".join(f"**{n}**" for n in remaining))
-    # 룰렛 그림 구현 - Plotly Pie Chart 사용 (학생이름)
-    fig = go.Figure(
-        data=[go.Pie(labels=remaining,
-                     values=[1]*len(remaining),
-                     hole=0.3,
-                     marker_colors=['#63cdda', '#ea8685', '#f6b93b', '#78e08f', '#e17055'],
-                     textinfo='label')]
-    )
-    fig.update_layout(
-        showlegend=False,
-        margin=dict(t=10, b=10, l=10, r=10),
-        height=350
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    # 룰렛 pie 차트 생성 함수 (학생 리스트, 시작 각도, 하이라이트 인덱스)
+    def make_roulette_chart(names, startangle=0, winner_idx=None):
+        n = len(names)
+        base_colors = ['#63cdda', '#ea8685', '#f6b93b', '#78e08f', '#e17055']
+        clrs = base_colors * (n // len(base_colors) + 1)
+        colors = clrs[:n]
+        if winner_idx is not None:
+            # 선택된 학생만 색상 강조
+            colors = [colors[i] if i != winner_idx else "#FFD93D" for i in range(n)]
+        fig = go.Figure(go.Pie(
+            labels=names,
+            values=[1]*n,
+            hole=0,
+            marker_colors=colors,
+            textinfo='label+percent',
+            sort=False,
+            rotation=startangle,  # 시작 각도 지정(반시계, 12시=0)
+            direction='clockwise'
+        ))
 
-    col_start, _ = st.columns([1,4])
-    with col_start:
-        if st.button("START!", key=f"roulette-start-{today_str}-{len(today_picked)}"):
-            # 룰렛 효과 - 약간의 '돌리는' 느낌 연출 (회전률 랜덤)
-            spin_rounds = random.randint(20, 30)
-            for i in range(spin_rounds):
-                temp_winner = random.choice(remaining)
-                fig_spin = go.Figure(
-                    data=[go.Pie(labels=remaining,
-                                 values=[1]*len(remaining),
-                                 hole=0.3,
-                                 marker_colors=['#63cdda' if lab!=temp_winner else '#f6b93b' for lab in remaining],
-                                 textinfo='label'
-                                 )]
-                )
-                fig_spin.update_layout(showlegend=False, margin=dict(t=10,b=10,l=10,r=10), height=350)
-                st.plotly_chart(fig_spin, use_container_width=True)
-                time.sleep(0.05 + (i/spin_rounds)*0.15)
-                st.empty()
-            winner = temp_winner
-            st.session_state.compliment_pick_history[today_str].append(winner)
-            # 효과음 (팡파레) - base64 임베딩 또는 MP3 url(무료)
+        fig.update_traces(textposition='inside', insidetextorientation='radial', hoverinfo="label")
+        fig.update_layout(
+            margin=dict(t=0, b=0, l=0, r=0),
+            showlegend=False,
+            width=450, height=450
+        )
+        # 화살표 (annotation + shape)
+        fig.add_shape(type="line",
+                      x0=0.5, y0=1.05, x1=0.5, y1=1.2,
+                      line=dict(color="#ff5555", width=6),
+                      xref="paper", yref="paper",
+                      )
+        # 삼각형 화살표 머리
+        fig.add_shape(type="path",
+            path="M 0.47 1.19 L 0.53 1.19 L 0.5 1.26 Z",
+            fillcolor="#ff5555", line=dict(color="#ff5555", width=1), xref="paper", yref="paper"
+        )
+        return fig
+
+    st.markdown("- Start버튼을 누르면 룰렛이 돌아 오늘의 주인공이 선정됩니다. <br> 룰렛이 돌아가다 12시 방향(화살표)에 맞는 학생이 오늘의 주인공이에요!", unsafe_allow_html=True)
+    
+    # 중앙에 Start버튼 만들기 (streamlit-button을 absolute로)
+    html_button = """
+    <div style="position:relative; width:450px; height:450px;">
+        <div id="roulette-chart-div" style="position:absolute; left:0; top:0; width:450px; height:450px;"></div>
+        <form action="" method="post">
+            <button style="
+                position:absolute; left:50%; top:50%; 
+                transform:translate(-50%,-50%);
+                z-index:10;
+                width:100px; height:100px;
+                border-radius:50%; border:4px solid #ff5555;
+                background-color:#ffe6e6; color:#e17055; font-size:22px; font-weight:bold; box-shadow:1px 2px 10px #eeb;">
+                START!
+            </button>
+        </form>
+    </div>
+    """
+
+    # streamlit에서 버튼을 chart 중앙에 넣긴 어렵지만, 비슷하게 col 레이아웃으로 emulation
+    c1, c2, c3 = st.columns([1,4,1])
+    with c2:
+        spin_flag = st.button("START!", key=f"roulette-start-{today_str}-{len(picked)}", help="룰렛 돌리기 (중앙스타트)")
+
+        # 현재 각도 정보 보존
+        if "roulette_angle" not in st.session_state:
+            st.session_state.roulette_angle = 0
+
+        # 룰렛 회전
+        if spin_flag and len(remaining) > 0:
+            spin_step = random.randint(28, 36)  # how many 'selects'
+            n = len(remaining)
+            base_angle = st.session_state.roulette_angle
+            for tick in range(spin_step):
+                # 실제 angle 연속적으로 증가(원판 회전)
+                cur_angle = base_angle + (360 * 3) + int((tick / spin_step) * 360)
+                show_angle = cur_angle % 360
+                fig = make_roulette_chart(remaining, startangle=show_angle)
+                st.plotly_chart(fig, use_container_width=True)
+                time.sleep(0.05 + (tick/spin_step)*0.07)
+                st.experimental_rerun()  # To show animation (stop after end)
+
+            # 최종 각도 : 12시(화살표)가 있는 곳이 winner
+            final_angle = base_angle + (360 * 3) + 360
+            winner_idx = (-final_angle // int(360 / n)) % n
+            winner_idx = int(winner_idx)
+            winner = remaining[winner_idx]
+            st.session_state.hero_pick_history[today_str].append(winner)
+            st.session_state.roulette_angle = random.randint(0, 359)
             st.balloons()
             confetti_mp3_url = "https://cdn.pixabay.com/audio/2022/07/26/audio_124bfa731f.mp3"
             st.audio(confetti_mp3_url, format="audio/mp3", start_time=0)
             st.markdown(
-                f"<h1 style='color:#e17055; font-size:48px; text-align:center;'>{winner}</h1>", unsafe_allow_html=True
+                f"<h1 style='color:#e17055; font-size:48px; text-align:center;'>{winner}</h1>",
+                unsafe_allow_html=True
             )
-            st.성공(f"오늘의 주인공은 {winner} 입니다. 🎉 오늘 하루 **{winner}**의 칭찬할 점을 찾아봅시다!")
+            st.성공(f"오늘의 주인공은 {winner} 입니다. 오늘 하루 **{winner}** 학생과 함께 멋진 하루 보내세요!")
 
-    # 당첨자 이름 바로 보여주기
-    if len(st.session_state.compliment_pick_history[today_str]) > len(today_picked):
-        winner = st.session_state.compliment_pick_history[today_str][-1]
+        # spin_flag 아니면(처음)
+        else:
+            fig = make_roulette_chart(remaining)
+            st.plotly_chart(fig, use_container_width=True)
+
+    # 당첨자 바로 보여주기
+    if len(st.session_state.hero_pick_history[today_str]) > len(picked):
+        winner = st.session_state.hero_pick_history[today_str][-1]
         st.markdown(
-            f"<h1 style='color:#e17055; font-size:48px; text-align:center;'>{winner}</h1>", unsafe_allow_html=True
+            f"<h1 style='color:#e17055; font-size:48px; text-align:center;'>{winner}</h1>",
+            unsafe_allow_html=True
         )
-        st.성공(f"오늘의 주인공은 {winner} 입니다. 🎉 오늘 하루 **{winner}**의 칭찬할 점을 찾아봅시다!")
+        st.성공(f"오늘의 주인공은 {winner} 입니다. 오늘 하루 **{winner}** 학생과 함께 멋진 하루 보내세요!")
+
+# ===========================
+# 3. 오늘의 칭찬샤워 (텍스트위주/룰렛 없음)
+# ===========================
+elif tab_key == "오늘의 칭찬샤워":
+    st.header("오늘의 칭찬샤워 🎉")
+    st.markdown("- 오늘 하루 친구들에게 칭찬을 해주고 싶은 '이유'와 '칭찬할 점'을 작성해 보세요!")
+    st.info("이 탭에서는 칭찬룰렛 없이 직접 학생이름을 선택해 칭찬 메시지를 저장할 수 있도록 구현하세요.")
+
+    if 'compliment' not in st.session_state:
+        st.session_state.compliment = pd.DataFrame(columns=["날짜", "학생", "내용"])
+
+    col1, col2 = st.columns(2)
+    with col1:
+        compliment_date = st.date_input("날짜 선택 (칭찬 날짜)", value=date.today(), key="compliment_date")
+    with col2:
+        compliment_student = st.selectbox("칭찬받은 학생 선택", STUDENT_LIST, key="compliment_student")
+
+    compliment_text = st.text_area("칭찬할 점(내용)", key="compliment_text")
+    if st.button("칭찬 저장"):
+        st.session_state.compliment = pd.concat([
+            st.session_state.compliment,
+            pd.DataFrame([[str(compliment_date), compliment_student, compliment_text]],
+                         columns=["날짜", "학생", "내용"])
+        ], ignore_index=True)
+        st.성공(f"{compliment_student} 학생의 [{compliment_date}] 칭찬 내용을 등록했습니다!")
+
+    # 칭찬기록(아래)
+    st.divider()
+    st.markdown("### 칭찬 기록")
+    df = st.session_state.compliment
+    if df.empty:
+        st.info("아직 칭찬 기록이 없습니다.")
+    else:
+        st.table(df)
