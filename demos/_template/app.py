@@ -38,9 +38,9 @@ if 'praise_shower' not in st.session_state:
 # 오늘, 이번달, 어제
 this_year, this_month = date.today().year, date.today().month
 today = date.today()
-어제 = today - timedelta(days=1)
+yesterday = today - timedelta(days=1)
 today_key = today.strftime("%Y-%m-%d")
-어제_key = yesterday.strftime("%Y-%m-%d")
+yesterday_key = yesterday.strftime("%Y-%m-%d")
 
 ### ---- 사이드바 ----
 st.set_page_config(page_title="학급 정서 기록", page_icon="🧡", layout="centered")
@@ -129,13 +129,15 @@ if menu == "무드미터":
     emotion_options = [f"{emoji} {emotion}" for (emotion, emoji, color) in EMOTIONS]
     # 모바일 호환 및 JS 미지원 브라우저 대비
     box_idx = st.selectbox("또는 감정을 선택하세요", options=list(range(len(EMOTIONS))), format_func=lambda x: emotion_options[x])
-
-    # JS로 감정 선택값을 세션에 저장 (쿼리파라미터 방식 코드 삭제)
-    if box_idx is not None:
+    # JS에서 값이 오면 세션에 저장
+    js_val = st.experimental_get_query_params().get('emotion_idx')
+    if js_val:
+        # 쿼리파람으로 받은 경우 강제 적용
+        st.session_state[f"emotion_{selected_name}_{select_ym}_{select_d}"] = int(js_val[0])
+    elif box_idx is not None:
         st.session_state[f"emotion_{selected_name}_{select_ym}_{select_d}"] = int(box_idx)
 
     emotion_idx = st.session_state[f"emotion_{selected_name}_{select_ym}_{select_d}"]
-
 
     # (3) 감정 입력 버튼
     if st.button("감정 입력"):
@@ -200,7 +202,7 @@ elif menu == "오늘의 주인공":
 
     # 룰렛 대상 학생 리스트 생성
     # 어제 뽑힌 학생은 오늘 룰렛 대상에서 빼지만 종합 리스트에는 보임
-    exclude_name = st.session_state.hero_pick_history.get(어제_key, None)
+    exclude_name = st.session_state.hero_pick_history.get(yesterday_key, None)
     roulette_names = STUDENT_LIST.copy()
     available_names = [name for name in STUDENT_LIST if name != exclude_name]
     
