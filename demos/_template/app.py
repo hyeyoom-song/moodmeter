@@ -56,10 +56,10 @@ if st.button("감정 기록 저장"):
                            columns=["날짜", "학생", "감정", "색상"])
     if mask.any():
         st.session_state.records.loc[mask, ["감정", "색상"]] = (selected_mood, selected_color)
-        st.success(f"{selected_student} 학생의 [{selected_date}] 감정 기록을 수정했습니다.")
+        st.성공(f"{selected_student} 학생의 [{selected_date}] 감정 기록을 수정했습니다.")
     else:
         st.session_state.records = pd.concat([records, new_row], ignore_index=True)
-        st.success(f"{selected_student} 학생의 [{selected_date}] 감정 기록을 저장했습니다.")
+        st.성공(f"{selected_student} 학생의 [{selected_date}] 감정 기록을 저장했습니다.")
 
 st.divider()
 st.markdown("### 학생별 감정 달력")
@@ -199,3 +199,97 @@ else:
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
+st.set_page_config(page_title="학급정서기록", page_icon="📝")
+
+TAB_LIST = ["오늘의 무드미터", "오늘의 주인공", "오늘의 칭찬샤워"]
+tab1, tab2, tab3 = st.tabs(TAB_LIST)
+
+# ===========================  
+# 1. 오늘의 무드미터 (기존 코드 그대로)
+# ===========================
+with tab1:
+    # [이하 기존 무드미터 코드 복사/붙여넣기 - 질문의 코드 그대로]
+    # ... (생략: 위 질문의 코드를 그대로 이 블록에 넣으세요)
+    pass  # 실제코드로 대체
+
+# ===========================
+# 2. 오늘의 칭찬샤워
+# ===========================
+with tab3:
+    st.header("오늘의 칭찬샤워 🎉")
+    st.markdown("- **학생이름이 적힌 룰렛**에서 Start 버튼을 누르면, 오늘의 칭찬샤워 주인공이 선정됩니다!")
+
+    # 1. session_state에서 오늘 뽑힌 칭찬샤워 학생 기록 조회/저장
+    today_str = str(date.today())
+    if 'compliment_pick_history' not in st.session_state:
+        st.session_state.compliment_pick_history = {}
+
+    # history는 날짜별도 리스트
+    if today_str not in st.session_state.compliment_pick_history:
+        st.session_state.compliment_pick_history[today_str] = []
+        
+    today_picked = st.session_state.compliment_pick_history[today_str]
+
+    # Step1: 남은 학생 계산
+    remaining = [name for name in STUDENT_LIST if name not in today_picked]
+    # 모두 뽑혔으면, 초기화
+    if len(remaining) == 0:
+        st.session_state.compliment_pick_history[today_str] = []
+        remaining = STUDENT_LIST.copy()
+        today_picked = []
+
+    # Step2: 룰렛 효과 (아스키 아트 + time.sleep, 혹은 plotly pie/streamlit_drawable_widgets 등 다양한 방식 가능)
+    st.write("오늘 칭찬샤워 후보:", ", ".join(f"**{n}**" for n in remaining))
+    # 룰렛 그림 구현 - Plotly Pie Chart 사용 (학생이름)
+    fig = go.Figure(
+        data=[go.Pie(labels=remaining,
+                     values=[1]*len(remaining),
+                     hole=0.3,
+                     marker_colors=['#63cdda', '#ea8685', '#f6b93b', '#78e08f', '#e17055'],
+                     textinfo='label')]
+    )
+    fig.update_layout(
+        showlegend=False,
+        margin=dict(t=10, b=10, l=10, r=10),
+        height=350
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    col_start, _ = st.columns([1,4])
+    with col_start:
+        if st.button("START!", key=f"roulette-start-{today_str}-{len(today_picked)}"):
+            # 룰렛 효과 - 약간의 '돌리는' 느낌 연출 (회전률 랜덤)
+            spin_rounds = random.randint(20, 30)
+            for i in range(spin_rounds):
+                temp_winner = random.choice(remaining)
+                fig_spin = go.Figure(
+                    data=[go.Pie(labels=remaining,
+                                 values=[1]*len(remaining),
+                                 hole=0.3,
+                                 marker_colors=['#63cdda' if lab!=temp_winner else '#f6b93b' for lab in remaining],
+                                 textinfo='label'
+                                 )]
+                )
+                fig_spin.update_layout(showlegend=False, margin=dict(t=10,b=10,l=10,r=10), height=350)
+                st.plotly_chart(fig_spin, use_container_width=True)
+                time.sleep(0.05 + (i/spin_rounds)*0.15)
+                st.empty()
+            winner = temp_winner
+            st.session_state.compliment_pick_history[today_str].append(winner)
+            # 효과음 (팡파레) - base64 임베딩 또는 MP3 url(무료)
+            st.balloons()
+            confetti_mp3_url = "https://cdn.pixabay.com/audio/2022/07/26/audio_124bfa731f.mp3"
+            st.audio(confetti_mp3_url, format="audio/mp3", start_time=0)
+            st.markdown(
+                f"<h1 style='color:#e17055; font-size:48px; text-align:center;'>{winner}</h1>", unsafe_allow_html=True
+            )
+            st.성공(f"오늘의 주인공은 {winner} 입니다. 🎉 오늘 하루 **{winner}**의 칭찬할 점을 찾아봅시다!")
+
+    # 당첨자 이름 바로 보여주기
+    if len(st.session_state.compliment_pick_history[today_str]) > len(today_picked):
+        winner = st.session_state.compliment_pick_history[today_str][-1]
+        st.markdown(
+            f"<h1 style='color:#e17055; font-size:48px; text-align:center;'>{winner}</h1>", unsafe_allow_html=True
+        )
+        st.성공(f"오늘의 주인공은 {winner} 입니다. 🎉 오늘 하루 **{winner}**의 칭찬할 점을 찾아봅시다!")
