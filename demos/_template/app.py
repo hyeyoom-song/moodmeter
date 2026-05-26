@@ -131,14 +131,13 @@ if menu == "무드미터":
     # 모바일 호환 및 JS 미지원 브라우저 대비
     box_idx = st.selectbox("또는 감정을 선택하세요", options=list(range(len(EMOTIONS))), format_func=lambda x: emotion_options[x])
     
-    # --- 오류 수정: 쿼리파람 에러 방지. ---
     # 쿼리 파라미터 안전하게 처리 (None될 수 있음)
     try:
         params = st.experimental_get_query_params()
         js_val = params.get('emotion_idx') if params 및 'emotion_idx' in params else None
     except Exception:
         js_val = None
-  
+      
     # JS에서 값이 오면 세션에 저장
     if js_val:
         st.session_state[state_key] = int(js_val[0])
