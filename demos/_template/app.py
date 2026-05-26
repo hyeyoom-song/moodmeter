@@ -216,7 +216,7 @@ if menu == "무드미터":
     # ▼▼▼--- [달력 표 스타일 개선] ---▼▼▼
     week_labels = ['일', '월', '화', '수', '목', '금', '토']
     today_obj = date.today()
-    this_is_today = (today_obj.year == cal_year 및 today_obj.month == cal_month)
+    this_is_today = (today_obj.year == cal_year and today_obj.month == cal_month)
 
     cal_tbl = (
         "<style>td{min-width:54px;min-height:54px;text-align:center;font-size:1.23em;vertical-align:top;}</style>"
