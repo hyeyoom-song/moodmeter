@@ -232,7 +232,7 @@ if menu == "무드미터":
             d = days_grid[r][c]
             color = cal_colors[r, c]
             emoji = cal_emojis[r, c]
-            is_today = (this_is_today 및 d == today_obj.day)
+            is_today = (this_is_today and d == today_obj.day)
             style = (
                 f"background:{'#fffceb' if is_today else color};"
                 "border:1px solid #e4e4e4; border-radius:10px; padding:2px;" +
@@ -299,7 +299,7 @@ elif menu == "오늘의 주인공":
         placeholder.plotly_chart(draw_roulette(roulette_names, winner_idx=idx), use_container_width=True)
         st.balloons()
         st.success(f"오늘의 주인공은 {winner}입니다. {winner}과 함께 멋진 하루 보내세요!")
-    elif start 및 len(available_names) > 0:
+    elif start and len(available_names) > 0:
         # 룰렛 동작 (오늘 선정된 주인공이 없다면 뽑기 로직 작동)
         n = len(available_names)
         total_angle = 360 * random.randint(3, 5) + random.randint(0, 359)
