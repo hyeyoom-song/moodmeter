@@ -114,7 +114,7 @@ if menu == "무드미터":
             idx = r * 4 + c
             emotion, emoji, color = EMOTIONS[idx]
             selected = (st.session_state[f"emotion_{selected_name}_{select_ym}_{select_d}"] == idx)
-            html = f"""<div class="emotion-btn{' selected' if selected else ''}" style="background:{color};" onclick="var event = new CustomEvent('emotionSelect', {{detail: {idx}}}); document.dispatch[...]
+            html = f"""<div class="emotion-btn{' selected' if selected else ''}" style="background:{color};" onclick="var event = new CustomEvent('emotionSelect', {{detail: {idx}}}); document.dispatch[...]"""
             btn_cols[r][c].markdown(html, unsafe_allow_html=True)
 
     # 자바스크립트로 감정 선택(모서리 둥근 버튼 동작)
@@ -233,16 +233,17 @@ if menu == "무드미터":
                 # 오늘 세팅값 선택 표시(굵은 테두리)
                 if (d == selected_day.day and view_month == selected_day.month and view_year == selected_day.year):
                     border_style = "2.5px solid #000"
-                cal_tbl += f"""
-                <td style='height:70px;max-width:100px;vertical-align:top;
-                    background:{bgcolor};
-                    border:{border_style};
-                    border-radius:8px;
-                    font-size:1.1em;
-                    color:{font_color};'>
-                    <div style='font-weight:bold;margin-top:2px;'>{d}</div>
-                    {emo_html}
-                </td>"""
+                cal_tbl += (
+                    f"<td style='height:70px;max-width:100px;vertical-align:top;"
+                    f"background:{bgcolor};"
+                    f"border:{border_style};"
+                    f"border-radius:8px;"
+                    f"font-size:1.1em;"
+                    f"color:{font_color};'>"
+                    f"<div style='font-weight:bold;margin-top:2px;'>{d}</div>"
+                    f"{emo_html}"
+                    "</td>"
+                )
             else:
                 # 빈 칸
                 cal_tbl += "<td></td>"
@@ -385,7 +386,7 @@ elif menu == "오늘의 칭찬샤워":
                         st.session_state.editing_praise_text = ""
                         st.experimental_rerun()
                 else:
-                    st.info(f"{idx+1}. {text}")
+                    st.정보(f"{idx+1}. {text}")
             with col2:
                 if st.session_state.editing_praise_idx != idx:
                     if st.button("수정", key=f"editbtn_{idx}"):
