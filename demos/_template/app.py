@@ -38,9 +38,9 @@ if 'praise_shower' not in st.session_state:
 # 오늘, 이번달, 어제
 this_year, this_month = date.today().year, date.today().month
 today = date.today()
-yesterday = today - timedelta(days=1)
+어제 = today - timedelta(days=1)
 today_key = today.strftime("%Y-%m-%d")
-yesterday_key = yesterday.strftime("%Y-%m-%d")
+어제_key = yesterday.strftime("%Y-%m-%d")
 
 ### ---- 사이드바 ----
 st.set_page_config(page_title="학급 정서 기록", page_icon="🧡", layout="centered")
@@ -149,50 +149,6 @@ if menu == "무드미터":
         else:
             st.warning("감정을 선택해주세요.")
 
-    ### (4) 캘린더 뷰(일~토, 월별, 감정색으로 표)
-    st.subheader(f"{selected_name} 감정 달력 ({select_ym})")
-    first_weekday, num_days = calendar.monthrange(int(select_ym[:4]), int(select_ym[5:]))
-    days_grid = np.full((6,7), None)
-    # 달력은 일요일(0)부터 시작
-    day = 1
-    row, col = 0, first_weekday
-    while day <= num_days:
-        days_grid[row][col] = day
-        col += 1
-        if col > 6:
-            row += 1
-            col = 0
-        day += 1
-
-    user_month_data = st.session_state.mood_data[selected_name].get(select_ym, {})
-    cal_colors = np.full((6,7), "#fafafa")   # 기본색
-    cal_emojis = np.full((6,7), "")
-    for r in range(6):
-        for c in range(7):
-            d = days_grid[r][c]
-            if d is not None:
-                em_idx = user_month_data.get(d, None)
-                if em_idx is not None:
-                    cal_colors[r, c] = EMOTIONS[em_idx][2]
-                    cal_emojis[r, c] = EMOTIONS[em_idx][1]
-    # 달력 출력
-    cal_tbl = f"<table style='border-spacing:8px;'><tr>" + "".join(
-        f"<th style='padding:6px;font-size:1em;color:#434;'>"
-        f"{w}</th>" for w in "일월화수목금토"
-    ) + "</tr>"
-    for r in range(6):
-        cal_tbl += "<tr>"
-        for c in range(7):
-            d = days_grid[r][c]
-            color = cal_colors[r, c]
-            emoji = cal_emojis[r, c]
-            if d is not None:
-                cal_tbl += f"<td style='background:{color}; width:48px; height:48px; border-radius:12px; text-align:center; vertical-align:middle; font-size:1.3em; border:1px solid #ccc;'>{d}<br>{emoji}</td>"
-            else:
-                cal_tbl += "<td></td>"
-        cal_tbl += "</tr>"
-    cal_tbl += "</table>"
-    st.markdown(cal_tbl, unsafe_allow_html=True)
 #############################################
 ### 2. 오늘의 주인공 PAGE
 #############################################
@@ -202,7 +158,7 @@ elif menu == "오늘의 주인공":
 
     # 룰렛 대상 학생 리스트 생성
     # 어제 뽑힌 학생은 오늘 룰렛 대상에서 빼지만 종합 리스트에는 보임
-    exclude_name = st.session_state.hero_pick_history.get(yesterday_key, None)
+    exclude_name = st.session_state.hero_pick_history.get(어제_key, None)
     roulette_names = STUDENT_LIST.copy()
     available_names = [name for name in STUDENT_LIST if name != exclude_name]
     
