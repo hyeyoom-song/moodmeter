@@ -36,13 +36,15 @@ if 'praise_shower' not in st.session_state:
     st.session_state.praise_shower = {}
 
 # 오늘, 이번달, 어제
-this_year, this_month = date.today().year, date.today().month
 from datetime import date, timedelta
 
+# 오늘, 어제
 today = date.today()
 어제 = today - timedelta(days=1)
 today_key = today.strftime("%Y-%m-%d")
 어제_key = yesterday.strftime("%Y-%m-%d")
+
+# 이후 사용 가능
 
 ### ---- 사이드바 ----
 st.set_page_config(page_title="학급 정서 기록", page_icon="🧡", layout="centered")
