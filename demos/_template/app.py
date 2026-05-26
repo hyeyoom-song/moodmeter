@@ -291,6 +291,7 @@ elif menu == "오늘의 칭찬샤워":
         if today_key not in st.session_state.praise_shower:
             st.session_state.praise_shower[today_key] = []
 
+        # 칭찬 남기기
         praise_text = st.text_area(f"{today_hero}에게 칭찬 한마디 남기기!", key="praise_text")
         if st.button("칭찬 남기기"):
             if praise_text.strip():
@@ -299,14 +300,47 @@ elif menu == "오늘의 칭찬샤워":
             else:
                 st.warning("칭찬을 입력해 주세요.")
 
-        # 칭찬 내역 보여주기
+        # 수정 기능 구현
         st.subheader("모두가 남긴 칭찬들 🌻")
         all_praises = st.session_state.praise_shower[today_key]
-        for idx, text in enumerate(all_praises, 1):
-            st.info(f"{idx}. {text}")
+        if "editing_praise_idx" not in st.session_state:
+            st.session_state.editing_praise_idx = None
+        if "editing_praise_text" not in st.session_state:
+            st.session_state.editing_praise_text = ""
 
-        # 엑셀 다운로드
+        for idx, text in enumerate(all_praises):
+            col1, col2 = st.columns([8, 1])
+            with col1:
+                # 수정중인 칭찬이면 텍스트에디트 활성화
+                if st.session_state.editing_praise_idx == idx:
+                    new_text = st.text_area(f"칭찬 수정 ({idx+1})", value=st.session_state.editing_praise_text, key=f"edit_{idx}")
+                    save = st.button("저장", key=f"save_{idx}")
+                    cancel = st.button("취소", key=f"cancel_{idx}")
+                    if save:
+                        if new_text.strip():
+                            st.session_state.praise_shower[today_key][idx] = new_text.strip()
+                            st.session_state.editing_praise_idx = None
+                            st.session_state.editing_praise_text = ""
+                            st.success("칭찬이 정상적으로 수정되었습니다!")
+                            st.experimental_rerun()
+                        else:
+                            st.warning("수정할 내용을 입력하세요.")
+                    if cancel:
+                        st.session_state.editing_praise_idx = None
+                        st.session_state.editing_praise_text = ""
+                        st.experimental_rerun()
+                else:
+                    st.info(f"{idx+1}. {text}")
+            with col2:
+                if st.session_state.editing_praise_idx != idx:
+                    if st.button("수정", key=f"editbtn_{idx}"):
+                        st.session_state.editing_praise_idx = idx
+                        st.session_state.editing_praise_text = text
+                        st.experimental_rerun()
+
+        # 엑셀 다운로드 기능
         if all_praises:
+            import pandas as pd
             praise_df = pd.DataFrame({
                 "주인공": [today_hero]*len(all_praises),
                 "날짜": [today_key]*len(all_praises),
