@@ -38,9 +38,9 @@ if 'praise_shower' not in st.session_state:
 # 오늘, 이번달, 어제
 this_year, this_month = date.today().year, date.today().month
 today = date.today()
-yesterday = today - timedelta(days=1)
+어제 = today - timedelta(days=1)
 today_key = today.strftime("%Y-%m-%d")
-yesterday_key = yesterday.strftime("%Y-%m-%d")
+어제_key = yesterday.strftime("%Y-%m-%d")
 
 ### ---- 사이드바 ----
 st.set_page_config(page_title="학급 정서 기록", page_icon="🧡", layout="centered")
@@ -148,111 +148,116 @@ if menu == "무드미터":
             st.success(f"{selected_name} 학생의 감정이 저장되었습니다!")
         else:
             st.warning("감정을 선택해주세요.")
+            # (감정 입력 버튼 & 기록 저장 등 기존 코드 위쪽은 그대로 두세요!)
 
-   ### (4) 네이버 스타일 감정 달력 추가
-import datetime
-import calendar
+    # (감정 입력 버튼 & 기록 저장 등 기존 코드 위쪽은 그대로 두세요!)
 
-st.markdown("<br>**감정 기록 달력**", unsafe_allow_html=True)
+    ### (4) 네이버 스타일 감정 달력 추가
+    import datetime
+    import calendar
 
-selected_year, selected_month = int(select_ym[:4]), int(select_ym[5:])
-user_month_data = st.session_state.mood_data[selected_name].get(select_ym, {})
-today_dt = datetime.date.today()
+    st.markdown("<br>**감정 기록 달력**", unsafe_allow_html=True)
 
-# 캘린더 구조 잡기
-calendar.setfirstweekday(calendar.SUNDAY)
-weeks = calendar.monthcalendar(selected_year, selected_month)
+    selected_year, selected_month = int(select_ym[:4]), int(select_ym[5:])
+    user_month_data = st.session_state.mood_data[selected_name].get(select_ym, {})
+    today_dt = datetime.date.today()
 
-# 스타일(네이버 캘린더 느낌)
-st.markdown("""
-    <style>
-    .calendar-table {
-      border-collapse: collapse;
-      min-width: 480px;
-      table-layout: fixed;
-      font-size: 17px;
-      background: white;
-    }
-    .calendar-table th {
-      border: 1px solid #ececec;
-      padding: 8px 0;
-      color: #34495e;
-      background: #f3f6fa;
-      font-weight: bold;
-    }
-    .calendar-table td {
-      border: 1px solid #ececec;
-      height: 58px;
-      text-align: left;
-      vertical-align: top;
-      padding: 3px 7px 4px 7px;
-      position: relative;
-      font-size: 15px;
-      color: #222;
-      background: #fff;
-    }
-    .calendar-table td.today {
-      background: #FFFDE0;
-      border: 2px solid #FFD93D;
-    }
-    .calendar-table td.past {
-        color: #cccccc;
-        background: #fafafc;
-    }
-    .emotion-badge {
-        display:inline-block;
-        margin-top:2px;
-        padding:1px 7px 2px 7px;
-        border-radius:9px;
-        font-size:1.07em;
-        font-weight:bold;
-        color:#343434;
-        word-break:keep-all;
-    }
-    </style>
-""", unsafe_allow_html=True)
+    # 캘린더 구조 잡기
+    calendar.setfirstweekday(calendar.SUNDAY)
+    weeks = calendar.monthcalendar(selected_year, selected_month)
 
-# 캘린더 HTML
-weekday_names = ["일", "월", "화", "수", "목", "금", "토"]
-calendar_html = f"<table class='calendar-table'><thead><tr>"
-for wd in weekday_names:
-    color = "#e74c3c" if wd == "일" else "#2980b9" if wd == "토" else "#222"
-    calendar_html += f"<th style='color:{color}'>{wd}</th>"
-calendar_html += "</tr></thead><tbody>"
+    # 스타일(네이버 캘린더 느낌)
+    st.markdown("""
+        <style>
+        .calendar-table {
+          border-collapse: collapse;
+          min-width: 480px;
+          table-layout: fixed;
+          font-size: 17px;
+          background: white;
+        }
+        .calendar-table th {
+          border: 1px solid #ececec;
+          padding: 8px 0;
+          color: #34495e;
+          background: #f3f6fa;
+          font-weight: bold;
+        }
+        .calendar-table td {
+          border: 1px solid #ececec;
+          height: 58px;
+          text-align: left;
+          vertical-align: top;
+          padding: 3px 7px 4px 7px;
+          position: relative;
+          font-size: 15px;
+              color: #222;
+          background: #fff;
+            }
+        .calendar-table td.today {
+          background: #FFFDE0;
+          border: 2px solid #FFD93D;
+        }
+        .calendar-table td.past {
+            color: #cccccc;
+            background: #fafafc;
+        }
+            .emotion-badge {
+            display:inline-block;
+            margin-top:2px;
+            padding:1px 7px 2px 7px;
+            border-radius:9px;
+            font-size:1.07em;
+            font-weight:bold;
+            color:#343434;
+            word-break:keep-all;
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
-for week in weeks:
-    calendar_html += "<tr>"
-    for i, day in enumerate(week):
-        extra_class = ""
+    # 캘린더 HTML
+    weekday_names = ["일", "월", "화", "수", "목", "금", "토"]
+    calendar_html = f"<table class='calendar-table'><thead><tr>"
+    for wd in weekday_names:
+        color = "#e74c3c" if wd == "일" else "#2980b9" if wd == "토" else "#222"
+        calendar_html += f"<th style='color:{color}'>{wd}</th>"
+    calendar_html += "</tr></thead><tbody>"
+
+    for week in weeks:
+        calendar_html += "<tr>"
+        for i, day in enumerate(week):
+            extra_class = ""
         cell_style = ""
-        show_date = str(day) if day != 0 else ""
-        content = ""
-        # 빈칸: 이전/다음달
-        if day == 0:
-            cell_style += "background:#fafafc; color:#cccccc;"
-            extra_class = "past"
+            show_date = str(day) if day != 0 else ""
             content = ""
-        else:
-            cell_date = datetime.date(selected_year, selected_month, day)
-            # 오늘이면 강조
-            if cell_date == today_dt:
+            # 빈칸: 이전/다음달
+            if day == 0:
+                cell_style += "background:#fafafc; color:#cccccc;"
+                extra_class = "past"
+                content = ""
+            else:
+                cell_date = datetime.date(selected_year, selected_month, day)
+                # 오늘이면 강조
+                if cell_date == today_dt:
                 extra_class = "today"
-            # 감정 데이터가 있으면 감정 표시
-            em_idx = user_month_data.get(day, None)
-            if em_idx is not None:
+                # 감정 데이터가 있으면 감정 표시
+                em_idx = user_month_data.get(day, None)
+                if em_idx is not None:
                 em_name, em_emoji, em_color = EMOTIONS[em_idx]
                 content = (f"<div class='emotion-badge' style='background:{em_color};'>"
                            f"{em_emoji} {em_name}</div>")
-        calendar_html += (
-            f"<td class='{extra_class}' style='{cell_style}'>"
-            f"<div style='font-size:14px; font-weight:bold; color:#222;'>{show_date}</div>"
-            f"{content}"
-            f"</td>"
-        )
-    calendar_html += "</tr>"
-calendar_html += "</tbody></table>"
+                calendar_html += (
+                f"<td class='{extra_class}' style='{cell_style}'>"
+                f"<div style='font-size:14px; font-weight:bold; color:#222;'>{show_date}</div>"
+                f"{content}"
+                f"</td>"
+            )
+        calendar_html += "</tr>"
+    calendar_html += "</tbody></table>"
 
-st.markdown(calendar_html, unsafe_allow_html=True)
+    st.markdown(calendar_html, unsafe_allow_html=True)
+
+
 #############################################
 ### 2. 오늘의 주인공 PAGE
 #############################################
@@ -262,7 +267,7 @@ elif menu == "오늘의 주인공":
 
     # 룰렛 대상 학생 리스트 생성
     # 어제 뽑힌 학생은 오늘 룰렛 대상에서 빼지만 종합 리스트에는 보임
-    exclude_name = st.session_state.hero_pick_history.get(yesterday_key, None)
+    exclude_name = st.session_state.hero_pick_history.get(어제_key, None)
     roulette_names = STUDENT_LIST.copy()
     available_names = [name for name in STUDENT_LIST if name != exclude_name]
     
@@ -302,7 +307,7 @@ elif menu == "오늘의 주인공":
         placeholder.plotly_chart(draw_roulette(roulette_names, winner_idx=idx), use_container_width=True)
         st.balloons()
         st.success(f"오늘의 주인공은 {winner}입니다. {winner}과 함께 멋진 하루 보내세요!")
-    elif start and len(available_names) > 0:
+    elif start 및 len(available_names) > 0:
         # 룰렛 동작 (오늘 선정된 주인공이 없다면 뽑기 로직 작동)
         n = len(available_names)
         total_angle = 360 * random.randint(3, 5) + random.randint(0, 359)
