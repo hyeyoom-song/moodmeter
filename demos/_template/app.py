@@ -243,7 +243,7 @@ elif menu == "오늘의 주인공":
         placeholder.plotly_chart(draw_roulette(roulette_names, winner_idx=idx), use_container_width=True)
         st.balloons()
         st.success(f"오늘의 주인공은 {winner}입니다. {winner}과 함께 멋진 하루 보내세요!")
-     elif start and len(available_names) > 0:
+    elif start and len(available_names) > 0:
         # 룰렛 동작 (오늘 선정된 주인공이 없다면 뽑기 로직 작동)
         n = len(available_names)
         total_angle = 360 * random.randint(3, 5) + random.randint(0, 359)
@@ -266,7 +266,7 @@ elif menu == "오늘의 주인공":
             unsafe_allow_html=True
         )
         st.success(f"오늘의 주인공은 {winner}입니다. {winner}과 함께 멋진 하루 보내세요!")
-      
+    
     else:
         # 최초 페이지 진입/아직 주인공 없음, 룰렛 그림 출력
         placeholder.plotly_chart(draw_roulette(roulette_names), use_container_width=True)
