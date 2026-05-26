@@ -149,23 +149,22 @@ if menu == "무드미터":
         else:
             st.warning("감정을 선택해주세요.")
             # (감정 입력 버튼 & 기록 저장 등 기존 코드 위쪽은 그대로 두세요!)
-
     # (감정 입력 버튼 & 기록 저장 등 기존 코드 위쪽은 그대로 두세요!)
 
     ### (4) 네이버 스타일 감정 달력 추가
     import datetime
     import calendar
-
+    
     st.markdown("<br>**감정 기록 달력**", unsafe_allow_html=True)
-
+    
     selected_year, selected_month = int(select_ym[:4]), int(select_ym[5:])
     user_month_data = st.session_state.mood_data[selected_name].get(select_ym, {})
     today_dt = datetime.date.today()
-
+    
     # 캘린더 구조 잡기
     calendar.setfirstweekday(calendar.SUNDAY)
     weeks = calendar.monthcalendar(selected_year, selected_month)
-
+    
     # 스타일(네이버 캘린더 느낌)
     st.markdown("""
         <style>
@@ -191,9 +190,9 @@ if menu == "무드미터":
           padding: 3px 7px 4px 7px;
           position: relative;
           font-size: 15px;
-              color: #222;
+          color: #222;
           background: #fff;
-            }
+        }
         .calendar-table td.today {
           background: #FFFDE0;
           border: 2px solid #FFD93D;
@@ -202,7 +201,7 @@ if menu == "무드미터":
             color: #cccccc;
             background: #fafafc;
         }
-            .emotion-badge {
+        .emotion-badge {
             display:inline-block;
             margin-top:2px;
             padding:1px 7px 2px 7px;
@@ -214,7 +213,7 @@ if menu == "무드미터":
         }
         </style>
     """, unsafe_allow_html=True)
-
+    
     # 캘린더 HTML
     weekday_names = ["일", "월", "화", "수", "목", "금", "토"]
     calendar_html = f"<table class='calendar-table'><thead><tr>"
@@ -222,12 +221,12 @@ if menu == "무드미터":
         color = "#e74c3c" if wd == "일" else "#2980b9" if wd == "토" else "#222"
         calendar_html += f"<th style='color:{color}'>{wd}</th>"
     calendar_html += "</tr></thead><tbody>"
-
+    
     for week in weeks:
         calendar_html += "<tr>"
         for i, day in enumerate(week):
             extra_class = ""
-        cell_style = ""
+            cell_style = ""
             show_date = str(day) if day != 0 else ""
             content = ""
             # 빈칸: 이전/다음달
@@ -239,14 +238,14 @@ if menu == "무드미터":
                 cell_date = datetime.date(selected_year, selected_month, day)
                 # 오늘이면 강조
                 if cell_date == today_dt:
-                extra_class = "today"
+                    extra_class = "today"
                 # 감정 데이터가 있으면 감정 표시
                 em_idx = user_month_data.get(day, None)
                 if em_idx is not None:
-                em_name, em_emoji, em_color = EMOTIONS[em_idx]
-                content = (f"<div class='emotion-badge' style='background:{em_color};'>"
-                           f"{em_emoji} {em_name}</div>")
-                calendar_html += (
+                    em_name, em_emoji, em_color = EMOTIONS[em_idx]
+                    content = (f"<div class='emotion-badge' style='background:{em_color};'>"
+                               f"{em_emoji} {em_name}</div>")
+            calendar_html += (
                 f"<td class='{extra_class}' style='{cell_style}'>"
                 f"<div style='font-size:14px; font-weight:bold; color:#222;'>{show_date}</div>"
                 f"{content}"
@@ -254,8 +253,9 @@ if menu == "무드미터":
             )
         calendar_html += "</tr>"
     calendar_html += "</tbody></table>"
-
+    
     st.markdown(calendar_html, unsafe_allow_html=True)
+    
 
 
 #############################################
@@ -338,7 +338,7 @@ elif menu == "오늘의 주인공":
         if today_hero:
             st.success(f"오늘의 주인공은 {today_hero}입니다. {today_hero}과 함께 멋진 하루 보내세요!")
         else:
-            st.info("아직 주인공이 선정되지 않았습니다!")
+            st.정보("아직 주인공이 선정되지 않았습니다!")
 
 
 #############################################
