@@ -72,10 +72,10 @@ if tab_key == "오늘의 무드미터":
                             columns=["날짜", "학생", "감정", "색상"])
         if mask.any():
             st.session_state.records.loc[mask, ["감정", "색상"]] = (selected_mood, selected_color)
-            st.success(f"{selected_student} 학생의 [{selected_date}] 감정 기록을 수정했습니다.")
+            st.성공(f"{selected_student} 학생의 [{selected_date}] 감정 기록을 수정했습니다.")
         else:
             st.session_state.records = pd.concat([records, new_row], ignore_index=True)
-            st.success(f"{selected_student} 학생의 [{selected_date}] 감정 기록을 저장했습니다.")
+            st.성공(f"{selected_student} 학생의 [{selected_date}] 감정 기록을 저장했습니다.")
 
     st.divider()
     st.markdown("### 학생별 감정 달력")
@@ -210,135 +210,57 @@ if tab_key == "오늘의 무드미터":
 # ===========================  
 # 2. 오늘의 주인공 (룰렛)
 # ===========================
-elif tab_key == "오늘의 주인공":
-    st.header("오늘의 주인공 룰렛 🎡")
+st.header("오늘의 주인공 룰렛 🎡")
+st.markdown("- Start버튼을 누르면 룰렛이 돌아 오늘의 주인공이 선정됩니다!")
+placeholder = st.empty()
 
-    today_str = str(date.today())
-    if 'hero_pick_history' not in st.session_state:
-        st.session_state.hero_pick_history = {}
-
-    if today_str not in st.session_state.hero_pick_history:
-        st.session_state.hero_pick_history[today_str] = []
-
-    picked = st.session_state.hero_pick_history[today_str]
-    remaining = [name for name in STUDENT_LIST if name not in picked]
-
-    if len(remaining) == 0:
-        st.session_state.hero_pick_history[today_str] = []
-        remaining = STUDENT_LIST.copy()
-        picked = []
-
-    # 룰렛 pie 차트 생성 함수 (학생 리스트, 시작 각도, 하이라이트 인덱스)
-    def make_roulette_chart(names, startangle=0, winner_idx=None):
-        n = len(names)
-        base_colors = ['#63cdda', '#ea8685', '#f6b93b', '#78e08f', '#e17055']
-        clrs = base_colors * (n // len(base_colors) + 1)
-        colors = clrs[:n]
-        if winner_idx is not None:
-            # 선택된 학생만 색상 강조
-            colors = [colors[i] if i != winner_idx else "#FFD93D" for i in range(n)]
-        fig = go.Figure(go.Pie(
-            labels=names,
-            values=[1]*n,
-            hole=0,
-            marker_colors=colors,
-            textinfo='label+percent',
-            sort=False,
-            rotation=startangle,  # 시작 각도 지정(반시계, 12시=0)
-            direction='clockwise'
-        ))
-
-        fig.update_traces(textposition='inside', insidetextorientation='radial', hoverinfo="label")
-        fig.update_layout(
-            margin=dict(t=0, b=0, l=0, r=0),
-            showlegend=False,
-            width=450, height=450
-        )
-        # 화살표 (annotation + shape)
-        fig.add_shape(type="line",
-                      x0=0.5, y0=1.05, x1=0.5, y1=1.2,
-                      line=dict(color="#ff5555", width=6),
-                      xref="paper", yref="paper",
-                      )
-        # 삼각형 화살표 머리
-        fig.add_shape(type="path",
+def draw_roulette(names, startangle=0, winner_idx=None):
+    n = len(names)
+    base_colors = ['#63cdda', '#ea8685', '#f6b93b', '#78e08f', '#e17055']
+    colors = base_colors * ((n // len(base_colors)) + 1)
+    colors = colors[:n]
+    if winner_idx is not None:
+        colors = [colors[i] if i != winner_idx else "#FFD93D" for i in range(n)]
+    fig = go.Figure(go.Pie(
+        labels=names, values=[1]*n,
+        hole=0, marker_colors=colors, sort=False,
+        textinfo='label+percent', rotation=startangle, direction='clockwise'
+    ))
+    # 화살표(12시 방향)
+    fig.add_shape(type="line", x0=0.5, y0=1.05, x1=0.5, y1=1.20,
+                  line=dict(color="#ff5555", width=6), xref="paper", yref="paper")
+    fig.add_shape(type="path",
             path="M 0.47 1.19 L 0.53 1.19 L 0.5 1.26 Z",
-            fillcolor="#ff5555", line=dict(color="#ff5555", width=1), xref="paper", yref="paper"
-        )
-        return fig
+            fillcolor="#ff5555", line=dict(color="#ff5555", width=1), xref="paper", yref="paper")
+    fig.update_layout(margin=dict(t=0, b=0, l=0, r=0), showlegend=False, width=410, height=410)
+    return fig
 
-    st.markdown("- Start버튼을 누르면 룰렛이 돌아 오늘의 주인공이 선정됩니다. <br> 룰렛이 돌아가다 12시 방향(화살표)에 맞는 학생이 오늘의 주인공이에요!", unsafe_allow_html=True)
-    
-    # 중앙에 Start버튼 만들기 (streamlit-button을 absolute로)
-    html_button = """
-    <div style="position:relative; width:450px; height:450px;">
-        <div id="roulette-chart-div" style="position:absolute; left:0; top:0; width:450px; height:450px;"></div>
-        <form action="" method="post">
-            <button style="
-                position:absolute; left:50%; top:50%; 
-                transform:translate(-50%,-50%);
-                z-index:10;
-                width:100px; height:100px;
-                border-radius:50%; border:4px solid #ff5555;
-                background-color:#ffe6e6; color:#e17055; font-size:22px; font-weight:bold; box-shadow:1px 2px 10px #eeb;">
-                START!
-            </button>
-        </form>
-    </div>
-    """
+# 중앙버튼
+c1, c2, c3 = st.columns([2, 2, 1])
+with c2:
+    start = st.button("START!", key=f"roulette-start-{today_str}-{len(picked)}")
 
-    # streamlit에서 버튼을 chart 중앙에 넣긴 어렵지만, 비슷하게 col 레이아웃으로 emulation
-    c1, c2, c3 = st.columns([1,4,1])
-    with c2:
-        spin_flag = st.button("START!", key=f"roulette-start-{today_str}-{len(picked)}", help="룰렛 돌리기 (중앙스타트)")
-
-        # 현재 각도 정보 보존
-        if "roulette_angle" not in st.session_state:
-            st.session_state.roulette_angle = 0
-
-        # 룰렛 회전
-        if spin_flag and len(remaining) > 0:
-            spin_step = random.randint(28, 36)  # how many 'selects'
-            n = len(remaining)
-            base_angle = st.session_state.roulette_angle
-            for tick in range(spin_step):
-                # 실제 angle 연속적으로 증가(원판 회전)
-                cur_angle = base_angle + (360 * 3) + int((tick / spin_step) * 360)
-                show_angle = cur_angle % 360
-                fig = make_roulette_chart(remaining, startangle=show_angle)
-                st.plotly_chart(fig, use_container_width=True)
-                time.sleep(0.05 + (tick/spin_step)*0.07)
-                st.experimental_rerun()  # To show animation (stop after end)
-
-            # 최종 각도 : 12시(화살표)가 있는 곳이 winner
-            final_angle = base_angle + (360 * 3) + 360
-            winner_idx = (-final_angle // int(360 / n)) % n
-            winner_idx = int(winner_idx)
-            winner = remaining[winner_idx]
-            st.session_state.hero_pick_history[today_str].append(winner)
-            st.session_state.roulette_angle = random.randint(0, 359)
-            st.balloons()
-            confetti_mp3_url = "https://cdn.pixabay.com/audio/2022/07/26/audio_124bfa731f.mp3"
-            st.audio(confetti_mp3_url, format="audio/mp3", start_time=0)
-            st.markdown(
-                f"<h1 style='color:#e17055; font-size:48px; text-align:center;'>{winner}</h1>",
-                unsafe_allow_html=True
-            )
-            st.성공(f"오늘의 주인공은 {winner} 입니다. 오늘 하루 **{winner}** 학생과 함께 멋진 하루 보내세요!")
-
-        # spin_flag 아니면(처음)
-        else:
-            fig = make_roulette_chart(remaining)
-            st.plotly_chart(fig, use_container_width=True)
-
-    # 당첨자 바로 보여주기
-    if len(st.session_state.hero_pick_history[today_str]) > len(picked):
-        winner = st.session_state.hero_pick_history[today_str][-1]
-        st.markdown(
-            f"<h1 style='color:#e17055; font-size:48px; text-align:center;'>{winner}</h1>",
-            unsafe_allow_html=True
-        )
-        st.성공(f"오늘의 주인공은 {winner} 입니다. 오늘 하루 **{winner}** 학생과 함께 멋진 하루 보내세요!")
+if start 및 len(remaining) > 0:
+    n = len(remaining)
+    total_angle = 360 * random.randint(3, 5) + random.randint(0, 359)
+    steps = 20
+    sleep_step = 0.08
+    for i in range(steps):
+        cur_angle = int(total_angle * (i + 1) / steps)
+        placeholder.plotly_chart(draw_roulette(remaining, startangle=cur_angle), use_container_width=True)
+        time.sleep(sleep_step + i * 0.005)
+    # 마지막: 화살표(12시위치)에 맞는 학생 찾음
+    per = 360 / n
+    idx = int(((360 - (total_angle % 360) + per/2) % 360) // per)
+    winner = remaining[idx]
+    st.session_state.hero_pick_history[today_str].append(winner)
+    placeholder.plotly_chart(draw_roulette(remaining, startangle=total_angle % 360, winner_idx=idx), use_container_width=True)
+    st.balloons()
+    st.markdown(
+        f"<h1 style='color:#e17055; font-size:48px; text-align:center;'>{winner}</h1>",
+        unsafe_allow_html=True
+    )
+    st.성공(f"오늘의 주인공은 {winner} 입니다. 오늘 하루 **{winner}** 학생과 함께 멋진 하루 보내세요!")
 
 # ===========================
 # 3. 오늘의 칭찬샤워 (텍스트위주/룰렛 없음)
