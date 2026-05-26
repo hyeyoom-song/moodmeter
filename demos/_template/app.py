@@ -155,13 +155,11 @@ if menu == "무드미터":
             st.warning("감정을 선택해주세요.")
 
     ### (4) 캘린더 뷰(일~토, 월별, 감정색으로 표)
-      # ▼▼▼--- [달력 월 이동 변수 초기화] ---▼▼▼
     if "calendar_year" not in st.session_state or "calendar_month" not in st.session_state:
         st.session_state.calendar_year = date.today().year
         st.session_state.calendar_month = date.today().month
 
-    # ▼▼▼--- [달력 월 이동 버튼] ---▼▼▼
-    col_prev, col_title, col_next = st.columns([1,3,1])
+    col_prev, col_title, col_next = st.columns([1, 3, 1])
     with col_prev:
         if st.button("◀", key="calendar_prev"):
             if st.session_state.calendar_month == 1:
@@ -178,19 +176,18 @@ if menu == "무드미터":
                 st.session_state.calendar_month += 1
     with col_title:
         st.markdown(
-            f"<div style='text-align:center; font-size:1.7em; font-weight:bold;'>"
+            f"<div style='text-align:center; font-size:2.1em; font-weight:bold;'>"
             f"{st.session_state.calendar_year}.{str(st.session_state.calendar_month).zfill(2)}"
             f"</div>", unsafe_allow_html=True
         )
 
-    # ▼▼▼--- [달력 2차 가공: 월, 년도 선택연동] ---▼▼▼
     cal_year = st.session_state.calendar_year
     cal_month = st.session_state.calendar_month
-    select_ym = f"{cal_year}-{str(cal_month).zfill(2)}"
-    first_weekday, num_days = calendar.monthrange(cal_year, cal_month)
+    calendar_selected_day = st.session_state.get("calendar_selected_day", date.today().day)
 
-    # 달력 데이터 그리드
-    days_grid = np.full((6,7), None)
+    # 달력 데이터 준비
+    first_weekday, num_days = calendar.monthrange(cal_year, cal_month)
+    days_grid = np.full((6, 7), None)
     day = 1
     row, col = 0, first_weekday
     while day <= num_days:
@@ -201,55 +198,95 @@ if menu == "무드미터":
             col = 0
         day += 1
 
+    select_ym = f"{cal_year}-{str(cal_month).zfill(2)}"
     user_month_data = st.session_state.mood_data[selected_name].get(select_ym, {})
-    cal_colors = np.full((6,7), "#fafafa")
-    cal_emojis = np.full((6,7), "")
-    for r in range(6):
-        for c in range(7):
-            d = days_grid[r][c]
-            if d is not None:
-                em_idx = user_month_data.get(d, None)
-                if em_idx is not None:
-                    cal_colors[r, c] = EMOTIONS[em_idx][2]
-                    cal_emojis[r, c] = EMOTIONS[em_idx][1]
-
-    # ▼▼▼--- [달력 표 스타일 개선] ---▼▼▼
     week_labels = ['일', '월', '화', '수', '목', '금', '토']
     today_obj = date.today()
     this_is_today = (today_obj.year == cal_year and today_obj.month == cal_month)
 
-    cal_tbl = (
-        "<style>td{min-width:54px;min-height:54px;text-align:center;font-size:1.23em;vertical-align:top;}</style>"
-        "<table style='border-collapse:collapse;border-spacing:0;'>"
-        "<tr>" + "".join(
-            f"<th style='padding:7px 0 7px 0;border-bottom:2px solid #aaa;color:#222;font-weight:bold;font-size:1.05em;'>{w}</th>"
+    # 달력 클릭 시 날짜를 선택해서 그 날짜 감정 선택/수정 가능하게 함
+    # 달력 클릭 감지용 폼
+    with st.form("calendar_form", clear_on_submit=False):
+        cal_tbl = """
+        <style>
+        .big-cal-td {min-width: 120px; min-height: 100px; font-size: 1.32em; border-radius:18px;}
+        .cal-emoji {font-size: 2.4em; display:block;}
+        .cal-label {font-weight:600; font-size:1.15em; margin-top:2px;}
+        .cal-select {border: 2.5px solid #3d6cb9 !important;}
+        .cal-today {border: 3px solid #FFD93D !important;}
+        </style>
+        <table style='border-collapse:collapse;'>
+        <tr>""" + "".join(
+            f"<th style='padding:11px;color:#272;font-size:1.11em;border-bottom:2px solid #aaa'>{w}</th>"
             for w in week_labels
         ) + "</tr>"
-    )
-    for r in range(6):
-        cal_tbl += "<tr>"
-        for c in range(7):
-            d = days_grid[r][c]
-            color = cal_colors[r, c]
-            emoji = cal_emojis[r, c]
-            is_today = (this_is_today and d == today_obj.day)
-            style = (
-                f"background:{'#fffceb' if is_today else color};"
-                "border:1px solid #e4e4e4; border-radius:10px; padding:2px;" +
-                (" box-shadow:0 0 6px #FFBE2E77;" if is_today else "")
-            )
-            if d is not None:
-                display_emoji = f"<span style='font-size:1.36em;'>{emoji}</span><br>" if emoji else ""
-                cal_tbl += (
-                    f"<td style='{style}'>"
-                    f"{display_emoji}<span {'style=color:#e17055;font-weight:bold;' if is_today else ''}>{d}</span>"
-                    "</td>"
-                )
-            else:
-                cal_tbl += f"<td></td>"
-        cal_tbl += "</tr>"
-    cal_tbl += "</table>"
-    st.markdown(cal_tbl, unsafe_allow_html=True)
+
+        for r in range(6):
+            cal_tbl += "<tr>"
+            for c in range(7):
+                d = days_grid[r][c]
+                style = "background:#fff; border:1.4px solid #eee; "
+                extra_class = "big-cal-td"
+                emoji, label, bgcolor = "", "", "#fafafa"
+                sel = (d == calendar_selected_day)
+                is_today = (this_is_today and d == today_obj.day)
+                if d is not None:
+                    em_idx = user_month_data.get(d, None)
+                    if em_idx is not None:
+                        emoji = EMOTIONS[em_idx][1]
+                        bgcolor = EMOTIONS[em_idx][2]
+                        label = EMOTIONS[em_idx][0]
+                    if sel:
+                        extra_class += " cal-select"
+                        style += "outline: 3px solid #4466BB;"
+                    elif is_today:
+                        extra_class += " cal-today"
+                        style += "outline: 2px solid #FFD93D;"
+                    style += f"background:{bgcolor};cursor:pointer;"
+                    cal_tbl += (
+                        f"<td class='{extra_class}' style='{style} vertical-align:top;' >"
+                        f"<button name='selected_date' value='{d}' style='background:transparent;border:none;padding:0;width:100%;height:100%'>"
+                        f"<span class='cal-emoji'>{emoji if emoji else ''}</span>"
+                        f"<span class='cal-label'>{label if label else ''}</span>"
+                        f"<div style='font-size:1.52em;font-weight:700; color:#444;margin-top:6px;'>{d}</div>"
+                        f"</button></td>"
+                    )
+                else:
+                    cal_tbl += "<td></td>"
+            cal_tbl += "</tr>"
+        cal_tbl += "</table>"
+        st.markdown(cal_tbl, unsafe_allow_html=True)
+        submitted = st.form_submit_button("날짜 선택 갱신")
+
+    # 폼에서 날짜 클릭 처럼 동작하도록 세션에 저장
+    selected_day_on_cal = calendar_selected_day
+    if submitted:
+        selected_day_on_cal = int(st.session_state["calendar_form-selected_date"])
+        st.session_state["calendar_selected_day"] = selected_day_on_cal
+
+    ### - 선택된 날짜에 맞춰 감정 선택 부분 갱신(수정 가능)
+    selected_day = date(cal_year, cal_month, selected_day_on_cal)
+    st.write(f"**선택된 날짜:** {selected_day.strftime('%Y-%m-%d')}")
+
+    # -- 이 아래는 감정 선택/입력 부분(기존 코드와 조합!) --
+    emotion_key = f"emotion_{selected_name}_{select_ym}_{selected_day_on_cal}"
+    if emotion_key not in st.session_state:
+        # 이미 저장되어 있다면 바로 선택값 복원
+        st.session_state[emotion_key] = user_month_data.get(selected_day_on_cal, None)
+
+    st.subheader("감정을 골라주세요")
+    emotion_options = [f"{emoji} {emotion}" for (emotion, emoji, color) in EMOTIONS]
+    box_idx = st.selectbox("감정 선택/수정", options=list(range(len(EMOTIONS))),
+                           format_func=lambda x: emotion_options[x],
+                           index=st.session_state[emotion_key] if st.session_state[emotion_key] is not None else 0)
+
+    # 저장/수정
+    if st.button("감정 저장/수정", key="save_emotion_btn"):
+        st.session_state[emotion_key] = int(box_idx)
+        user_month_data[selected_day_on_cal] = int(box_idx)
+        st.session_state.mood_data[selected_name][select_ym] = user_month_data
+        st.success(f"{selected_name} 학생의 {selected_day_on_cal}일 감정이 저장/수정되었습니다!")
+
 #############################################
 ### 2. 오늘의 주인공 PAGE
 #############################################
