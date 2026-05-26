@@ -37,6 +37,8 @@ if 'praise_shower' not in st.session_state:
 
 # 오늘, 이번달, 어제
 this_year, this_month = date.today().year, date.today().month
+from datetime import date, timedelta
+
 today = date.today()
 어제 = today - timedelta(days=1)
 today_key = today.strftime("%Y-%m-%d")
