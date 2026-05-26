@@ -151,7 +151,7 @@ if menu == "무드미터":
             # (감정 입력 버튼 & 기록 저장 등 기존 코드 위쪽은 그대로 두세요!)
     # (감정 입력 버튼 & 기록 저장 등 기존 코드 위쪽은 그대로 두세요!)
 
-       ### (4) 캘린더 뷰(일~토, 월별, 감정색으로 표)
+    # (4) 캘린더 뷰(일~토, 월별, 감정색으로 표)
     st.subheader(f"{selected_name} 감정 달력 ({select_ym})")
     first_weekday, num_days = calendar.monthrange(int(select_ym[:4]), int(select_ym[5:]))
     days_grid = np.full((6,7), None)
