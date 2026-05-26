@@ -38,9 +38,9 @@ if 'praise_shower' not in st.session_state:
 # 오늘, 이번달, 어제
 this_year, this_month = date.today().year, date.today().month
 today = date.today()
-어제 = today - timedelta(days=1)
+yesterday = today - timedelta(days=1)
 today_key = today.strftime("%Y-%m-%d")
-어제_key = 어제.strftime("%Y-%m-%d")
+yesterday_key = yesterday.strftime("%Y-%m-%d")
 
 ### ---- 사이드바 ----
 st.set_page_config(page_title="학급 정서 기록", page_icon="🧡", layout="centered")
@@ -114,7 +114,7 @@ if menu == "무드미터":
             idx = r * 4 + c
             emotion, emoji, color = EMOTIONS[idx]
             selected = (st.session_state[f"emotion_{selected_name}_{select_ym}_{select_d}"] == idx)
-            html = f"""<div class="emotion-btn{' selected' if selected else ''}" style="background:{color};" onclick="var event = new CustomEvent('emotionSelect', {{detail: {idx}}}); document.dispatch[...]"""
+            html = f"""<div class="emotion-btn{' selected' if selected else ''}" style="background:{color};" onclick="var event = new CustomEvent('emotionSelect', {{detail: {idx}}}); document.dispatchEvent(event)">{emoji}<br/><span style="font-size:0.6em;">{emotion}</span></div>"""
             btn_cols[r][c].markdown(html, unsafe_allow_html=True)
 
     # 자바스크립트로 감정 선택(모서리 둥근 버튼 동작)
@@ -151,43 +151,9 @@ if menu == "무드미터":
 
     ### (4) 캘린더 뷰(일~토, 월별, 감정색으로 표)
     st.subheader(f"{selected_name} 감정 달력 ({select_ym})")
-
-    # 달력 월 변경
-    calendar_col1, calendar_col2, calendar_col3, calendar_col4 = st.columns([1,2,2,1])
-    # 달 변경 변수
-    current_ym_dt = datetime.strptime(select_ym + "-01", "%Y-%m-%d")
-    with calendar_col1:
-        prev_month_btn = st.button("◀️", key="prev_month")
-    with calendar_col4:
-        next_month_btn = st.button("▶️", key="next_month")
-    # 달 변경 로직
-    if 'calendar_ym' not in st.session_state:
-        st.session_state.calendar_ym = current_ym_dt
-    if prev_month_btn:
-        st.session_state.calendar_ym = st.session_state.calendar_ym - timedelta(days=1)
-        st.session_state.calendar_ym = st.session_state.calendar_ym.replace(day=1)
-    if next_month_btn:
-        next_month = st.session_state.calendar_ym + timedelta(days=32)
-        st.session_state.calendar_ym = next_month.replace(day=1)
-    ym_dt = st.session_state.calendar_ym
-    view_year = ym_dt.year
-    view_month = ym_dt.month
-
-    # "오늘" 버튼
-    with calendar_col2:
-        if st.button("오늘", key="goto_today"):
-            st.session_state.calendar_ym = datetime.today().replace(day=1)
-            ym_dt = st.session_state.calendar_ym
-            view_year = ym_dt.year
-            view_month = ym_dt.month
-
-    # 월/년 텍스트
-    with calendar_col3:
-        st.markdown(f"<h3 style='margin-bottom:0;'>{view_year}. {str(view_month).zfill(2)}</h3>", unsafe_allow_html=True)
-
-    # 달력 데이터 재생성
-    first_weekday, num_days = calendar.monthrange(view_year, view_month)
+    first_weekday, num_days = calendar.monthrange(int(select_ym[:4]), int(select_ym[5:]))
     days_grid = np.full((6,7), None)
+    # 달력은 일요일(0)부터 시작
     day = 1
     row, col = 0, first_weekday
     while day <= num_days:
@@ -198,54 +164,31 @@ if menu == "무드미터":
             col = 0
         day += 1
 
-    cal_tbl = "<table style='width:100%;border-collapse:collapse;text-align:center;'>"
-    # 요일 헤더
-    cal_tbl += ("<tr>" +
-                "".join([f"<th style='padding:8px 3px;color:gray;font-weight:bold;font-size:1em;'>{w}</th>"
-                        for w in "일월화수목금토"]) +
-                "</tr>")
-
-    # 사용자 감정 데이터
-    user_month_data = st.session_state.mood_data[selected_name].get(f"{view_year}-{view_month:02d}", {})
-
+    user_month_data = st.session_state.mood_data[selected_name].get(select_ym, {})
+    cal_colors = np.full((6,7), "#fafafa")   # 기본색
+    cal_emojis = np.full((6,7), "")
+    for r in range(6):
+        for c in range(7):
+            d = days_grid[r][c]
+            if d is not None:
+                em_idx = user_month_data.get(d, None)
+                if em_idx is not None:
+                    cal_colors[r, c] = EMOTIONS[em_idx][2]
+                    cal_emojis[r, c] = EMOTIONS[em_idx][1]
+    # 달력 출력
+    cal_tbl = f"<table style='border-spacing:8px;'><tr>" + "".join(
+        f"<th style='padding:6px;font-size:1em;color:#434;'>"
+        f"{w}</th>" for w in "일월화수목금토"
+    ) + "</tr>"
     for r in range(6):
         cal_tbl += "<tr>"
         for c in range(7):
             d = days_grid[r][c]
-            select_today = None
-            emo_html = ""
-            bgcolor = "#fff"
-            border_style = "1px solid #e0e0e0"
-            font_color = "#2d2d2d"
-
-            # 오늘 표시
-            if d == today.day and view_month == today.month and view_year == today.year:
-                border_style = "2.5px solid #4361ee"
-
-            # 이번 달 내 날짜에는 감정 데이터 표시
+            color = cal_colors[r, c]
+            emoji = cal_emojis[r, c]
             if d is not None:
-                em_idx = user_month_data.get(d, None)
-                if em_idx is not None:
-                    e_name, e_emoji, e_color = EMOTIONS[em_idx]
-                    # 감정 색상 배경
-                    bgcolor = e_color
-                    emo_html = f"<div style='font-size:1.2em'>{e_emoji}</div><div style='font-size:0.8em'>{e_name}</div>"
-                # 오늘 세팅값 선택 표시(굵은 테두리)
-                if (d == selected_day.day and view_month == selected_day.month and view_year == selected_day.year):
-                    border_style = "2.5px solid #000"
-                cal_tbl += (
-                    f"<td style='height:70px;max-width:100px;vertical-align:top;"
-                    f"background:{bgcolor};"
-                    f"border:{border_style};"
-                    f"border-radius:8px;"
-                    f"font-size:1.1em;"
-                    f"color:{font_color};'>"
-                    f"<div style='font-weight:bold;margin-top:2px;'>{d}</div>"
-                    f"{emo_html}"
-                    "</td>"
-                )
+                cal_tbl += f"<td style='background:{color}; width:48px; height:48px; border-radius:12px; text-align:center; vertical-align:middle; font-size:1.3em; border:1px solid #ccc;'>{d}<br>{emoji}</td>"
             else:
-                # 빈 칸
                 cal_tbl += "<td></td>"
         cal_tbl += "</tr>"
     cal_tbl += "</table>"
@@ -259,7 +202,7 @@ elif menu == "오늘의 주인공":
 
     # 룰렛 대상 학생 리스트 생성
     # 어제 뽑힌 학생은 오늘 룰렛 대상에서 빼지만 종합 리스트에는 보임
-    exclude_name = st.session_state.hero_pick_history.get(어제_key, None)
+    exclude_name = st.session_state.hero_pick_history.get(yesterday_key, None)
     roulette_names = STUDENT_LIST.copy()
     available_names = [name for name in STUDENT_LIST if name != exclude_name]
     
