@@ -151,110 +151,50 @@ if menu == "무드미터":
             # (감정 입력 버튼 & 기록 저장 등 기존 코드 위쪽은 그대로 두세요!)
     # (감정 입력 버튼 & 기록 저장 등 기존 코드 위쪽은 그대로 두세요!)
 
-    ### (4) 네이버 스타일 감정 달력 추가
-    import datetime
-    import calendar
-    
-    st.markdown("<br>**감정 기록 달력**", unsafe_allow_html=True)
-    
-    selected_year, selected_month = int(select_ym[:4]), int(select_ym[5:])
+       ### (4) 캘린더 뷰(일~토, 월별, 감정색으로 표)
+    st.subheader(f"{selected_name} 감정 달력 ({select_ym})")
+    first_weekday, num_days = calendar.monthrange(int(select_ym[:4]), int(select_ym[5:]))
+    days_grid = np.full((6,7), None)
+    # 달력은 일요일(0)부터 시작
+    day = 1
+    row, col = 0, first_weekday
+    while day <= num_days:
+        days_grid[row][col] = day
+        col += 1
+        if col > 6:
+            row += 1
+            col = 0
+        day += 1
+
     user_month_data = st.session_state.mood_data[selected_name].get(select_ym, {})
-    today_dt = datetime.date.today()
-    
-    # 캘린더 구조 잡기
-    calendar.setfirstweekday(calendar.SUNDAY)
-    weeks = calendar.monthcalendar(selected_year, selected_month)
-    
-    # 스타일(네이버 캘린더 느낌)
-    st.markdown("""
-        <style>
-        .calendar-table {
-          border-collapse: collapse;
-          min-width: 480px;
-          table-layout: fixed;
-          font-size: 17px;
-          background: white;
-        }
-        .calendar-table th {
-          border: 1px solid #ececec;
-          padding: 8px 0;
-          color: #34495e;
-          background: #f3f6fa;
-          font-weight: bold;
-        }
-        .calendar-table td {
-          border: 1px solid #ececec;
-          height: 58px;
-          text-align: left;
-          vertical-align: top;
-          padding: 3px 7px 4px 7px;
-          position: relative;
-          font-size: 15px;
-          color: #222;
-          background: #fff;
-        }
-        .calendar-table td.today {
-          background: #FFFDE0;
-          border: 2px solid #FFD93D;
-        }
-        .calendar-table td.past {
-            color: #cccccc;
-            background: #fafafc;
-        }
-        .emotion-badge {
-            display:inline-block;
-            margin-top:2px;
-            padding:1px 7px 2px 7px;
-            border-radius:9px;
-            font-size:1.07em;
-            font-weight:bold;
-            color:#343434;
-            word-break:keep-all;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-    
-    # 캘린더 HTML
-    weekday_names = ["일", "월", "화", "수", "목", "금", "토"]
-    calendar_html = f"<table class='calendar-table'><thead><tr>"
-    for wd in weekday_names:
-        color = "#e74c3c" if wd == "일" else "#2980b9" if wd == "토" else "#222"
-        calendar_html += f"<th style='color:{color}'>{wd}</th>"
-    calendar_html += "</tr></thead><tbody>"
-    
-    for week in weeks:
-        calendar_html += "<tr>"
-        for i, day in enumerate(week):
-            extra_class = ""
-            cell_style = ""
-            show_date = str(day) if day != 0 else ""
-            content = ""
-            # 빈칸: 이전/다음달
-            if day == 0:
-                cell_style += "background:#fafafc; color:#cccccc;"
-                extra_class = "past"
-                content = ""
-            else:
-                cell_date = datetime.date(selected_year, selected_month, day)
-                # 오늘이면 강조
-                if cell_date == today_dt:
-                    extra_class = "today"
-                # 감정 데이터가 있으면 감정 표시
-                em_idx = user_month_data.get(day, None)
+    cal_colors = np.full((6,7), "#fafafa")   # 기본색
+    cal_emojis = np.full((6,7), "")
+    for r in range(6):
+        for c in range(7):
+            d = days_grid[r][c]
+            if d is not None:
+                em_idx = user_month_data.get(d, None)
                 if em_idx is not None:
-                    em_name, em_emoji, em_color = EMOTIONS[em_idx]
-                    content = (f"<div class='emotion-badge' style='background:{em_color};'>"
-                               f"{em_emoji} {em_name}</div>")
-            calendar_html += (
-                f"<td class='{extra_class}' style='{cell_style}'>"
-                f"<div style='font-size:14px; font-weight:bold; color:#222;'>{show_date}</div>"
-                f"{content}"
-                f"</td>"
-            )
-        calendar_html += "</tr>"
-    calendar_html += "</tbody></table>"
-    
-    st.markdown(calendar_html, unsafe_allow_html=True)
+                    cal_colors[r, c] = EMOTIONS[em_idx][2]
+                    cal_emojis[r, c] = EMOTIONS[em_idx][1]
+    # 달력 출력
+    cal_tbl = f"<table style='border-spacing:8px;'><tr>" + "".join(
+        f"<th style='padding:6px;font-size:1em;color:#434;'>"
+        f"{w}</th>" for w in "일월화수목금토"
+    ) + "</tr>"
+    for r in range(6):
+        cal_tbl += "<tr>"
+        for c in range(7):
+            d = days_grid[r][c]
+            color = cal_colors[r, c]
+            emoji = cal_emojis[r, c]
+            if d is not None:
+                cal_tbl += f"<td style='background:{color}; width:48px; height:48px; border-radius:12px; text-align:center; vertical-align:middle; font-size:1.3em; border:1px solid #ccc;'>{d}<br>{emoji}</td>"
+            else:
+                cal_tbl += "<td></td>"
+        cal_tbl += "</tr>"
+    cal_tbl += "</table>"
+    st.markdown(cal_tbl, unsafe_allow_html=True)
     
 
 
