@@ -60,127 +60,100 @@ if menu == "무드미터":
     st.title('학급 정서 기록🧡')
     st.header("오늘의 무드미터")
 
-    # --- 월 이동용 상태
-    if "calendar_year" not in st.session_state or "calendar_month" not in st.session_state:
-        st.session_state.calendar_year = date.today().year
-        st.session_state.calendar_month = date.today().month
-
-    # --- 이름, 월/연도/일 선택
+    ### (1) 날짜/이름 선택
     col1, col2 = st.columns(2)
     with col1:
-        selected_name = st.selectbox("학생 이름", STUDENT_LIST, key="moodmeter_name")
-    with col2:
-        # 일자 선택은 현재 달에 한해 제공 (월 이동은 달력에서)
-        today = date.today()
-        cal_year = st.session_state.calendar_year
-        cal_month = st.session_state.calendar_month
-        # 같은 월이면 오늘로 default, 아니면 1일로
-        default_day = today.day if (today.year == cal_year and today.month == cal_month) else 1
-        selected_day = st.number_input("날짜를 선택하세요", min_value=1,
-                max_value=calendar.monthrange(cal_year, cal_month)[1], value=default_day, step=1, key="moodmeter_day")
-
-    # --- 월 이동 버튼 및 월 표기
-    col_prev, col_title, col_next = st.columns([1,3,1])
-    with col_prev:
-        if st.button("◀", key="calendar_prev"):
-            if st.session_state.calendar_month == 1:
-                st.session_state.calendar_year -= 1
-                st.session_state.calendar_month = 12
-            else:
-                st.session_state.calendar_month -= 1
-    with col_next:
-        if st.button("▶", key="calendar_next"):
-            if st.session_state.calendar_month == 12:
-                st.session_state.calendar_year += 1
-                st.session_state.calendar_month = 1
-            else:
-                st.session_state.calendar_month += 1
-    with col_title:
-        st.markdown(
-            f"<div style='text-align:center; font-size:2.1em; font-weight:bold;'>{st.session_state.calendar_year}.{str(st.session_state.calendar_month).zfill(2)}</div>",
-            unsafe_allow_html=True
+        # 월별만 입력받을 수 있도록 제한
+        selected_day = st.date_input(
+            "날짜를 선택하세요",
+            value=today,
+            min_value=date(this_year, this_month, 1),
+            max_value=date(this_year, this_month, calendar.monthrange(this_year, this_month)[1])
         )
+    with col2:
+        selected_name = st.selectbox("학생 이름", STUDENT_LIST, key="moodmeter_name")
 
-    cal_year = st.session_state.calendar_year
-    cal_month = st.session_state.calendar_month
-    select_ym = f"{cal_year}-{str(cal_month).zfill(2)}"
+    select_ym = selected_day.strftime("%Y-%m")
+    select_d = selected_day.day
 
-    # --- 감정 버튼 4x4
+    ### (2) 감정 16개, 4x4, 색상circle+이모지
     st.subheader("감정을 골라주세요")
+    emotion_idx = -1
+    select_emotion = None
     btn_cols = [st.columns(4) for _ in range(4)]  # 4x4
-    emotion_clicked = None
-    emotion_key = f"emotion_{selected_name}_{select_ym}_{selected_day}"
 
-    # 이전에 선택한 감정 인덱스 (있으면 버튼 스타일 강조에 사용)
-    prev_idx = None
-    user_month_data = st.session_state.mood_data[selected_name].setdefault(select_ym, {})
-    if emotion_key in st.session_state and st.session_state[emotion_key] is not None:
-        prev_idx = st.session_state[emotion_key]
-    else:
-        prev_idx = user_month_data.get(selected_day, None)
-
-    # 버튼 스타일 강화 (선택시 굵게)
+    # 둥근 버튼 스타일
     btn_css = """
         <style>
         .emotion-btn {
-            border-radius: 16px;
-            padding: 0.5rem 0.2rem;
-            margin: 0.18rem !important;
+            border-radius: 20px;
+            padding: 1rem 0.5rem;
+            margin: 0.25rem !important;
             cursor:pointer;
             display:inline-block;
             text-align:center;
-            width:68px;
+            width:100px;
             font-weight:bold;
-            font-size:1.1em;
+            font-size:1.5em;
             border:2px solid #eee;
         }
         .emotion-btn.selected {
             border:3px solid #434;
-            box-shadow:0 0 6px #FFD93D77;
+            box-shadow:0 0 10px #FFD93D77;
         }
         </style>
     """
     st.markdown(btn_css, unsafe_allow_html=True)
 
+    # 선택된 감정을 세션에 기록(학생 별)
+    if f"emotion_{selected_name}_{select_ym}_{select_d}" not in st.session_state:
+        st.session_state[f"emotion_{selected_name}_{select_ym}_{select_d}"] = None
+
     for r in range(4):
         for c in range(4):
             idx = r * 4 + c
             emotion, emoji, color = EMOTIONS[idx]
-            selected = (prev_idx == idx)
-            html = f"""<button class="emotion-btn{' selected' if selected else ''}" style="background:{color};"
-                        onclick="window.parent.postMessage({{'isStreamlitMessage':true,'type':'emotionClick','emotion':{idx}}}, '*');return false;">
-                        <span style='font-size:1.5em;'>{emoji}</span><br>{emotion}</button>"""
+            selected = (st.session_state[f"emotion_{selected_name}_{select_ym}_{select_d}"] == idx)
+            html = f"""<div class="emotion-btn{' selected' if selected else ''}" style="background:{color};" onclick="var event = new CustomEvent('emotionSelect', {{detail: {idx}}}); document.dispatchEvent(event)">{emoji}<br/><span style="font-size:0.6em;">{emotion}</span></div>"""
             btn_cols[r][c].markdown(html, unsafe_allow_html=True)
-    # JavaScript 이벤트 인터럽트: 감정 클릭시 query param 삽입 대신 Streamlit의 js hack 사용(아래 코드 자동 실행 X)
+
+    # 자바스크립트로 감정 선택(모서리 둥근 버튼 동작)
+    # Streamlit events로 값을 받을 수 없으므로 selectbox로 추가 옵션도 제공
     st.markdown("""
         <script>
-        window.addEventListener("message", (event) => {
-            if (event.data && event.data.type === "emotionClick") {
-                window.location.hash = "emotion=" + event.data.emotion;
-                window.dispatchEvent(new HashChangeEvent("hashchange"));
-            }
-        });
-        function setStreamlitEmotion() {
-            var idx = window.location.hash.match(/emotion=(\d+)/);
-            if(idx){window.parent.postMessage({ isStreamlitMessage: true, type: "streamlit:setComponentValue", value: idx[1] }, "*");}
-        }
-        window.addEventListener("hashchange", setStreamlitEmotion);
+        const selEvt = (e) => {window.parent.postMessage({func:'emotionSelected', value:e.detail}, '*');};
+        document.removeEventListener('emotionSelect', selEvt);
+        document.addEventListener('emotionSelect', selEvt);
         </script>
-        """, unsafe_allow_html=True)
-    # hash에 감정 번호가 있으면 해당 감정 save(즉시 반영)
-    import re
-    hash_emotion = st.experimental_get_query_params().get('emotion')
-    if hash_emotion:
-        sel_emotion_idx = int(hash_emotion[0])
-        st.session_state[emotion_key] = sel_emotion_idx
-        user_month_data[selected_day] = sel_emotion_idx
-        st.session_state.mood_data[selected_name][select_ym] = user_month_data
-        st.success(f"{selected_name} 학생의 {selected_day}일 감정이 저장되었습니다!")
+    """, unsafe_allow_html=True)
+    emotion_options = [f"{emoji} {emotion}" for (emotion, emoji, color) in EMOTIONS]
+    # 모바일 호환 및 JS 미지원 브라우저 대비
+    box_idx = st.selectbox("또는 감정을 선택하세요", options=list(range(len(EMOTIONS))), format_func=lambda x: emotion_options[x])
+    # JS에서 값이 오면 세션에 저장
+    js_val = st.experimental_get_query_params().get('emotion_idx')
+    if js_val:
+        # 쿼리파람으로 받은 경우 강제 적용
+        st.session_state[f"emotion_{selected_name}_{select_ym}_{select_d}"] = int(js_val[0])
+    elif box_idx is not None:
+        st.session_state[f"emotion_{selected_name}_{select_ym}_{select_d}"] = int(box_idx)
 
-    # --- 감정 달력(축소형)
+    emotion_idx = st.session_state[f"emotion_{selected_name}_{select_ym}_{select_d}"]
+
+    # (3) 감정 입력 버튼
+    if st.button("감정 입력"):
+        if emotion_idx is not None:
+            # 학생별, 월별 기록 저장
+            user_month_data = st.session_state.mood_data[selected_name].setdefault(select_ym, {})
+            user_month_data[select_d] = emotion_idx
+            st.success(f"{selected_name} 학생의 감정이 저장되었습니다!")
+        else:
+            st.warning("감정을 선택해주세요.")
+
+    ### (4) 캘린더 뷰(일~토, 월별, 감정색으로 표)
     st.subheader(f"{selected_name} 감정 달력 ({select_ym})")
-    first_weekday, num_days = calendar.monthrange(cal_year, cal_month)
+    first_weekday, num_days = calendar.monthrange(int(select_ym[:4]), int(select_ym[5:]))
     days_grid = np.full((6,7), None)
+    # 달력은 일요일(0)부터 시작
     day = 1
     row, col = 0, first_weekday
     while day <= num_days:
@@ -191,52 +164,35 @@ if menu == "무드미터":
             col = 0
         day += 1
 
-    week_labels = ['일', '월', '화', '수', '목', '금', '토']
-    today_obj = date.today()
-    this_is_today = (today_obj.year == cal_year and today_obj.month == cal_month)
-
-    cal_tbl = """
-    <style>
-    .cal-tdx {min-width:38px;min-height:34px;text-align:center;font-size:0.98em; border-radius:8px; padding:2px;}
-    .cal-emoji {font-size:1.13em;}
-    .cal-label {font-size:0.78em;}
-    </style>
-    <table style='border-collapse:collapse;'>
-    <tr>""" + "".join(
-        f"<th style='padding:5px 0 5px 0;border-bottom:1.4px solid #aaa;color:#222;font-weight:bold;font-size:0.98em;'>{w}</th>"
-        for w in week_labels
+    user_month_data = st.session_state.mood_data[selected_name].get(select_ym, {})
+    cal_colors = np.full((6,7), "#fafafa")   # 기본색
+    cal_emojis = np.full((6,7), "")
+    for r in range(6):
+        for c in range(7):
+            d = days_grid[r][c]
+            if d is not None:
+                em_idx = user_month_data.get(d, None)
+                if em_idx is not None:
+                    cal_colors[r, c] = EMOTIONS[em_idx][2]
+                    cal_emojis[r, c] = EMOTIONS[em_idx][1]
+    # 달력 출력
+    cal_tbl = f"<table style='border-spacing:8px;'><tr>" + "".join(
+        f"<th style='padding:6px;font-size:1em;color:#434;'>"
+        f"{w}</th>" for w in "일월화수목금토"
     ) + "</tr>"
-
     for r in range(6):
         cal_tbl += "<tr>"
         for c in range(7):
             d = days_grid[r][c]
-            emoji, label, bgcolor = "", "", "#fafafa"
-            is_today = (this_is_today and d == today_obj.day)
+            color = cal_colors[r, c]
+            emoji = cal_emojis[r, c]
             if d is not None:
-                em_idx = user_month_data.get(d, None)
-                if em_idx is not None:
-                    emoji = EMOTIONS[em_idx][1]
-                    bgcolor = EMOTIONS[em_idx][2]
-                    label = EMOTIONS[em_idx][0]
-                cell_style = (
-                    f"background:{'#fffdeb' if is_today else bgcolor};"
-                    "border:1px solid #e4e4e4; border-radius:8px; padding:2px;"
-                    + ("box-shadow:0 0 4px #FFD93D77;" if is_today else "")
-                )
-                cal_tbl += (
-                    f"<td class='cal-tdx' style='{cell_style}'>"
-                    f"<span class='cal-emoji'>{emoji if emoji else ''}</span><br>"
-                    f"<span class='cal-label'>{label if label else ''}</span><br>"
-                    f"<span style='font-size:0.98em;font-weight:700;color:#444'>{d}</span></td>"
-                )
+                cal_tbl += f"<td style='background:{color}; width:48px; height:48px; border-radius:12px; text-align:center; vertical-align:middle; font-size:1.3em; border:1px solid #ccc;'>{d}<br>{emoji}</td>"
             else:
                 cal_tbl += "<td></td>"
         cal_tbl += "</tr>"
     cal_tbl += "</table>"
     st.markdown(cal_tbl, unsafe_allow_html=True)
-
-
 #############################################
 ### 2. 오늘의 주인공 PAGE
 #############################################
@@ -317,7 +273,7 @@ elif menu == "오늘의 주인공":
         if today_hero:
             st.success(f"오늘의 주인공은 {today_hero}입니다. {today_hero}과 함께 멋진 하루 보내세요!")
         else:
-            st.정보("아직 주인공이 선정되지 않았습니다!")
+            st.info("아직 주인공이 선정되지 않았습니다!")
 
 
 #############################################
@@ -373,7 +329,7 @@ elif menu == "오늘의 칭찬샤워":
                         st.session_state.editing_praise_text = ""
                         st.experimental_rerun()
                 else:
-                    st.정보(f"{idx+1}. {text}")
+                    st.info(f"{idx+1}. {text}")
             with col2:
                 if st.session_state.editing_praise_idx != idx:
                     if st.button("수정", key=f"editbtn_{idx}"):
