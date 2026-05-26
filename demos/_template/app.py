@@ -138,7 +138,7 @@ if menu == "무드미터":
         js_val = params.get('emotion_idx') if params 및 'emotion_idx' in params else None
     except Exception:
         js_val = None
-
+  
     # JS에서 값이 오면 세션에 저장
     if js_val:
         st.session_state[state_key] = int(js_val[0])
