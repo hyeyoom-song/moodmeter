@@ -54,7 +54,7 @@ menu = st.sidebar.radio(
 
 
 #############################################
-### 1. 무드미터 PAGE (오류 수정 본문)
+### 1. 무드미터 PAGE
 #############################################
 if menu == "무드미터":
     st.title('학급 정서 기록🧡')
@@ -106,16 +106,15 @@ if menu == "무드미터":
     st.markdown(btn_css, unsafe_allow_html=True)
 
     # 선택된 감정을 세션에 기록(학생 별)
-    state_key = f"emotion_{selected_name}_{select_ym}_{select_d}"
-    if state_key not in st.session_state:
-        st.session_state[state_key] = None
+    if f"emotion_{selected_name}_{select_ym}_{select_d}" not in st.session_state:
+        st.session_state[f"emotion_{selected_name}_{select_ym}_{select_d}"] = None
 
     for r in range(4):
         for c in range(4):
             idx = r * 4 + c
             emotion, emoji, color = EMOTIONS[idx]
-            selected = (st.session_state[state_key] == idx)
-            html = f"""<div class="emotion-btn{' selected' if selected else ''}" style="background:{color};" onclick="var event = new CustomEvent('emotionSelect', {{detail: {idx}}}); document.dispatchEvent(event);">{emoji}<br><span style='font-size:0.6em'>{emotion}</span></div>"""
+            selected = (st.session_state[f"emotion_{selected_name}_{select_ym}_{select_d}"] == idx)
+            html = f"""<div class="emotion-btn{' selected' if selected else ''}" style="background:{color};" onclick="var event = new CustomEvent('emotionSelect', {{detail: {idx}}}); document.dispatchEvent(event)">{emoji}<br/><span style="font-size:0.6em;">{emotion}</span></div>"""
             btn_cols[r][c].markdown(html, unsafe_allow_html=True)
 
     # 자바스크립트로 감정 선택(모서리 둥근 버튼 동작)
@@ -130,21 +129,15 @@ if menu == "무드미터":
     emotion_options = [f"{emoji} {emotion}" for (emotion, emoji, color) in EMOTIONS]
     # 모바일 호환 및 JS 미지원 브라우저 대비
     box_idx = st.selectbox("또는 감정을 선택하세요", options=list(range(len(EMOTIONS))), format_func=lambda x: emotion_options[x])
-    
-    # 쿼리 파라미터 안전하게 처리 (None될 수 있음)
-    try:
-        params = st.experimental_get_query_params()
-        js_val = params.get('emotion_idx') if params 및 'emotion_idx' in params else None
-    except Exception:
-        js_val = None
-      
     # JS에서 값이 오면 세션에 저장
+    js_val = st.experimental_get_query_params().get('emotion_idx')
     if js_val:
-        st.session_state[state_key] = int(js_val[0])
+        # 쿼리파람으로 받은 경우 강제 적용
+        st.session_state[f"emotion_{selected_name}_{select_ym}_{select_d}"] = int(js_val[0])
     elif box_idx is not None:
-        st.session_state[state_key] = int(box_idx)
+        st.session_state[f"emotion_{selected_name}_{select_ym}_{select_d}"] = int(box_idx)
 
-    emotion_idx = st.session_state[state_key]
+    emotion_idx = st.session_state[f"emotion_{selected_name}_{select_ym}_{select_d}"]
 
     # (3) 감정 입력 버튼
     if st.button("감정 입력"):
@@ -249,7 +242,7 @@ elif menu == "오늘의 주인공":
         placeholder.plotly_chart(draw_roulette(roulette_names, winner_idx=idx), use_container_width=True)
         st.balloons()
         st.success(f"오늘의 주인공은 {winner}입니다. {winner}과 함께 멋진 하루 보내세요!")
-    elif start and len(available_names) > 0:
+    elif start 및 len(available_names) > 0:
         # 룰렛 동작 (오늘 선정된 주인공이 없다면 뽑기 로직 작동)
         n = len(available_names)
         total_angle = 360 * random.randint(3, 5) + random.randint(0, 359)
@@ -280,7 +273,7 @@ elif menu == "오늘의 주인공":
         if today_hero:
             st.success(f"오늘의 주인공은 {today_hero}입니다. {today_hero}과 함께 멋진 하루 보내세요!")
         else:
-            st.info("아직 주인공이 선정되지 않았습니다!")
+            st.정보("아직 주인공이 선정되지 않았습니다!")
 
 
 #############################################
