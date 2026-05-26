@@ -36,15 +36,11 @@ if 'praise_shower' not in st.session_state:
     st.session_state.praise_shower = {}
 
 # 오늘, 이번달, 어제
-from datetime import date, timedelta
-
-# 오늘, 어제
+this_year, this_month = date.today().year, date.today().month
 today = date.today()
-어제 = today - timedelta(days=1)
+yesterday = today - timedelta(days=1)
 today_key = today.strftime("%Y-%m-%d")
-어제_key = yesterday.strftime("%Y-%m-%d")
-
-# 이후 사용 가능
+yesterday_key = yesterday.strftime("%Y-%m-%d")
 
 ### ---- 사이드바 ----
 st.set_page_config(page_title="학급 정서 기록", page_icon="🧡", layout="centered")
@@ -133,13 +129,15 @@ if menu == "무드미터":
     emotion_options = [f"{emoji} {emotion}" for (emotion, emoji, color) in EMOTIONS]
     # 모바일 호환 및 JS 미지원 브라우저 대비
     box_idx = st.selectbox("또는 감정을 선택하세요", options=list(range(len(EMOTIONS))), format_func=lambda x: emotion_options[x])
-
-    # JS로 감정 선택값을 세션에 저장 (쿼리파라미터 방식 코드 삭제)
-    if box_idx is not None:
+    # JS에서 값이 오면 세션에 저장
+    js_val = st.experimental_get_query_params().get('emotion_idx')
+    if js_val:
+        # 쿼리파람으로 받은 경우 강제 적용
+        st.session_state[f"emotion_{selected_name}_{select_ym}_{select_d}"] = int(js_val[0])
+    elif box_idx is not None:
         st.session_state[f"emotion_{selected_name}_{select_ym}_{select_d}"] = int(box_idx)
 
     emotion_idx = st.session_state[f"emotion_{selected_name}_{select_ym}_{select_d}"]
-
 
     # (3) 감정 입력 버튼
     if st.button("감정 입력"):
@@ -266,14 +264,14 @@ elif menu == "오늘의 주인공":
             f"<h1 style='color:#e17055; font-size:48px; text-align:center;'>{winner}</h1>",
             unsafe_allow_html=True
         )
-        st.성공(f"오늘의 주인공은 {winner}입니다. {winner}과 함께 멋진 하루 보내세요!")
+        st.success(f"오늘의 주인공은 {winner}입니다. {winner}과 함께 멋진 하루 보내세요!")
     
     else:
         # 최초 페이지 진입/아직 주인공 없음, 룰렛 그림 출력
         placeholder.plotly_chart(draw_roulette(roulette_names), use_container_width=True)
         # 만약 주인공이 오늘 뽑혔다면 이름 강조
         if today_hero:
-            st.성공(f"오늘의 주인공은 {today_hero}입니다. {today_hero}과 함께 멋진 하루 보내세요!")
+            st.success(f"오늘의 주인공은 {today_hero}입니다. {today_hero}과 함께 멋진 하루 보내세요!")
         else:
             st.info("아직 주인공이 선정되지 않았습니다!")
 
@@ -297,7 +295,7 @@ elif menu == "오늘의 칭찬샤워":
         if st.button("칭찬 남기기"):
             if praise_text.strip():
                 st.session_state.praise_shower[today_key].append(praise_text.strip())
-                st.성공("칭찬이 정상적으로 등록되었습니다!")
+                st.success("칭찬이 정상적으로 등록되었습니다!")
             else:
                 st.warning("칭찬을 입력해 주세요.")
 
@@ -322,7 +320,7 @@ elif menu == "오늘의 칭찬샤워":
                             st.session_state.praise_shower[today_key][idx] = new_text.strip()
                             st.session_state.editing_praise_idx = None
                             st.session_state.editing_praise_text = ""
-                            st.성공("칭찬이 정상적으로 수정되었습니다!")
+                            st.success("칭찬이 정상적으로 수정되었습니다!")
                             st.experimental_rerun()
                         else:
                             st.warning("수정할 내용을 입력하세요.")
@@ -331,7 +329,7 @@ elif menu == "오늘의 칭찬샤워":
                         st.session_state.editing_praise_text = ""
                         st.experimental_rerun()
                 else:
-                    st.info(f"{idx+1}. {text}")
+                    st.정보(f"{idx+1}. {text}")
             with col2:
                 if st.session_state.editing_praise_idx != idx:
                     if st.button("수정", key=f"editbtn_{idx}"):
