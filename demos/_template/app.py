@@ -2,16 +2,10 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import calendar
-from datetime import date, datetime, timedelta
-import plotly.graph_objects as go
-import random
-import time
-import io
+from datetime import date, timedelta
 
-# 학생 목록
+# 학생 목록 및 16가지 감정 정의
 STUDENT_LIST = ["김철수", "이영희", "박민준", "최다은", "정하늘"]
-
-# 16가지 감정 정의 (이름, 이모지, 색상)
 EMOTIONS = [
     ("행복", "😊", "#FFD93D"),   ("즐거움", "😄", "#FFB84C"),
     ("설렘", "😍", "#FF6D60"),   ("평온", "😌", "#A7FFE4"),
@@ -23,45 +17,17 @@ EMOTIONS = [
     ("당황", "😳", "#FFABAB"),   ("외로움", "🥺", "#B6EADA"),
 ]
 
-# 세션 상태 초기화
-today_str = str(date.today())
-if 'mood_data' not in st.session_state:
-    # 형식: {이름: {yyyy-mm: {일: (emotion_idx)}}}
-    st.session_state.mood_data = {name: {} for name in STUDENT_LIST}
-if 'hero_pick_history' not in st.session_state:
-    # {yyyy-mm-dd: 이름}
-    st.session_state.hero_pick_history = {}
-if 'praise_shower' not in st.session_state:
-    # {yyyy-mm-dd: [칭찬글]}
-    st.session_state.praise_shower = {}
-
-# 오늘, 이번달, 어제
-this_year, this_month = date.today().year, date.today().month
+# 세션상태 초기화
 today = date.today()
-yesterday = today - timedelta(days=1)
-today_key = today.strftime("%Y-%m-%d")
-yesterday_key = yesterday.strftime("%Y-%m-%d")
+if 'mood_data' not in st.session_state:
+    # {이름: {yyyy-mm: {일: 감정idx}}}
+    st.session_state.mood_data = {name: {} for name in STUDENT_LIST}
 
-### ---- 사이드바 ----
-st.set_page_config(page_title="학급 정서 기록", page_icon="🧡", layout="centered")
-st.sidebar.title("메뉴")
-menu = st.sidebar.radio(
-    "이동",
-    ["무드미터", "오늘의 주인공", "오늘의 칭찬샤워"],
-    index=0,
-    key="sidebar_menu"
-)
+# 제목 및 날짜/학생 선택
+st.title('학급 정서 기록🧡')
+st.header("오늘의 무드미터")
 
-
-#############################################
-### 1. 무드미터 PAGE
-#############################################
-if menu == "무드미터":
-    st.title('학급 정서 기록🧡')
-    st.header("오늘의 무드미터")
-
-    ### (1) 날짜/이름 선택
-  col1, col2 = st.columns(2)
+col1, col2 = st.columns(2)
 with col1:
     selected_day = st.date_input(
         "날짜를 선택하세요",
