@@ -42,7 +42,6 @@ yesterday_key = yesterday.strftime("%Y-%m-%d")
 
 # ---- 페이지 설정 및 사이드바 ----
 st.set_page_config(page_title="학급 정서 기록", page_icon="🧡", layout="centered")
-st.set_page_config(page_title="학급 정서 기록", page_icon="🧡", layout="centered")
 
 # ============ PIN 로그인 추가 ============
 if "logged_in_student" not in st.session_state:
@@ -80,10 +79,6 @@ if st.sidebar.button("로그아웃"):
     st.session_state.logged_in_student = None
     st.rerun()
 
-# 기존 menu 코드 이후, 무드미터 페이지에서:
-# selected_name = st.session_state.logged_in_student  # 드롭다운 대신 고정
-
-
 st.sidebar.title("메뉴")
 menu = st.sidebar.radio(
     "이동",
@@ -106,10 +101,12 @@ if menu == "무드미터":
     if "calendar_month" not in st.session_state:
         st.session_state.calendar_month = today.month
 
-    # 이름, 일자 선택
-    col1, col2 = st.columns(2)
-    with col1:
-        selected_name = st.selectbox("학생 이름", STUDENT_LIST, key="moodmeter_name")
+    # 로그인한 학생 정보 표시
+    selected_name = st.session_state.logged_in_student
+    st.info(f"😊 {selected_name}의 무드미터를 기록하고 있습니다")
+
+    # 날짜만 선택
+    col2 = st.columns(1)[0]
     with col2:
         cal_year = st.session_state.calendar_year
         cal_month = st.session_state.calendar_month
@@ -407,4 +404,3 @@ elif menu == "오늘의 칭찬샤워":
                 file_name=f"praise_{today_key}.csv",
                 mime='text/csv'
             )
-
