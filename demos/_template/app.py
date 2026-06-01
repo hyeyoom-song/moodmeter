@@ -95,63 +95,22 @@ if menu == "무드미터":
     st.title('학급 정서 기록🧡')
     st.header("오늘의 무드미터")
 
-    # 월 이동용 상태
-    if "calendar_year" not in st.session_state:
-        st.session_state.calendar_year = today.year
-    if "calendar_month" not in st.session_state:
-        st.session_state.calendar_month = today.month
-
     # 로그인한 학생 정보 표시
     selected_name = st.session_state.logged_in_student
     st.info(f"😊 {selected_name}의 무드미터를 기록하고 있습니다")
 
-    # 날짜만 선택
-    col2 = st.columns(1)[0]
-    with col2:
-        cal_year = st.session_state.calendar_year
-        cal_month = st.session_state.calendar_month
-        max_day_in_month = calendar.monthrange(cal_year, cal_month)[1]
-        default_day = today.day if (today.year == cal_year and today.month == cal_month) else 1
-        # 이전 selected_day가 새 달의 max를 넘는 경우 보정
-        if "moodmeter_day" in st.session_state and st.session_state.moodmeter_day > max_day_in_month:
-            st.session_state.moodmeter_day = max_day_in_month
-        selected_day = st.number_input(
-            "날짜를 선택하세요",
-            min_value=1,
-            max_value=max_day_in_month,
-            value=default_day,
-            step=1,
-            key="moodmeter_day"
-        )
-
-    # 월 이동 버튼 및 월 표기
-    col_prev, col_title, col_next = st.columns([1, 3, 1])
-    with col_prev:
-        if st.button("◀", key="calendar_prev"):
-            if st.session_state.calendar_month == 1:
-                st.session_state.calendar_year -= 1
-                st.session_state.calendar_month = 12
-            else:
-                st.session_state.calendar_month -= 1
-            st.rerun()
-    with col_next:
-        if st.button("▶", key="calendar_next"):
-            if st.session_state.calendar_month == 12:
-                st.session_state.calendar_year += 1
-                st.session_state.calendar_month = 1
-            else:
-                st.session_state.calendar_month += 1
-            st.rerun()
-    with col_title:
-        st.markdown(
-            f"<div style='text-align:center; font-size:2.1em; font-weight:bold;'>"
-            f"{st.session_state.calendar_year}.{str(st.session_state.calendar_month).zfill(2)}</div>",
-            unsafe_allow_html=True
-        )
-
-    cal_year = st.session_state.calendar_year
-    cal_month = st.session_state.calendar_month
-    select_ym = f"{cal_year}-{str(cal_month).zfill(2)}"
+    # 날짜 선택 (년/월/일)
+    selected_date = st.date_input(
+        "날짜를 선택하세요",
+        value=today,
+        key="mood_date_picker"
+    )
+    
+    # 선택된 날짜에서 년, 월, 일 추출
+    selected_year = selected_date.year
+    selected_month = selected_date.month
+    selected_day = selected_date.day
+    select_ym = f"{selected_year}-{str(selected_month).zfill(2)}"
 
     # 현재 학생/연월의 데이터
     user_month_data = st.session_state.mood_data[selected_name].setdefault(select_ym, {})
@@ -166,7 +125,7 @@ if menu == "무드미터":
         st.markdown(
             f"<div style='background:{emo_color};padding:10px;border-radius:10px;"
             f"text-align:center;font-size:1.1em;font-weight:bold;margin-bottom:10px;color:#222;'>"
-            f"{selected_day}일 선택, {emo_emoji} {emo_name}</div>",
+            f"{selected_year}.{str(selected_month).zfill(2)}.{str(selected_day).zfill(2)} 선택, {emo_emoji} {emo_name}</div>",
             unsafe_allow_html=True
         )
 
@@ -191,7 +150,7 @@ if menu == "무드미터":
 
     # 감정 달력
     st.subheader(f"{selected_name} 감정 달력 ({select_ym})")
-    first_weekday, num_days = calendar.monthrange(cal_year, cal_month)
+    first_weekday, num_days = calendar.monthrange(selected_year, selected_month)
     # monthrange는 월요일=0 기준이므로, 일요일을 첫 칸으로 두기 위해 보정
     sunday_first_weekday = (first_weekday + 1) % 7
 
@@ -207,7 +166,7 @@ if menu == "무드미터":
         day += 1
 
     week_labels = ['일', '월', '화', '수', '목', '금', '토']
-    this_is_today = (today.year == cal_year and today.month == cal_month)
+    this_is_today = (today.year == selected_year and today.month == selected_month)
 
     cal_tbl = """
     <style>
