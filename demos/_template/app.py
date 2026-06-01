@@ -42,6 +42,48 @@ yesterday_key = yesterday.strftime("%Y-%m-%d")
 
 # ---- 페이지 설정 및 사이드바 ----
 st.set_page_config(page_title="학급 정서 기록", page_icon="🧡", layout="centered")
+st.set_page_config(page_title="학급 정서 기록", page_icon="🧡", layout="centered")
+
+# ============ PIN 로그인 추가 ============
+if "logged_in_student" not in st.session_state:
+    st.session_state.logged_in_student = None
+
+STUDENT_PINS = {
+    "김철수": "1111",
+    "이영희": "2222", 
+    "박민준": "3333",
+    "최다은": "4444",
+    "정하늘": "5555"
+}
+
+if not st.session_state.logged_in_student:
+    st.title("🧡 학급 정서 기록")
+    st.write("학생 이름과 PIN을 입력하세요")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        name = st.selectbox("이름 선택", STUDENT_LIST)
+    with col2:
+        pin = st.text_input("PIN (4자리)", type="password", max_chars=4)
+    
+    if st.button("로그인", use_container_width=True):
+        if pin == STUDENT_PINS[name]:
+            st.session_state.logged_in_student = name
+            st.rerun()
+        else:
+            st.error("❌ PIN이 틀렸습니다")
+    st.stop()
+
+# ============ 로그인 후 메뉴 ============
+st.sidebar.write(f"👋 **{st.session_state.logged_in_student}** 님")
+if st.sidebar.button("로그아웃"):
+    st.session_state.logged_in_student = None
+    st.rerun()
+
+# 기존 menu 코드 이후, 무드미터 페이지에서:
+# selected_name = st.session_state.logged_in_student  # 드롭다운 대신 고정
+
+
 st.sidebar.title("메뉴")
 menu = st.sidebar.radio(
     "이동",
