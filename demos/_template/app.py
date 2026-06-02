@@ -316,7 +316,7 @@ elif menu == "오늘의 주인공":
                 <div style='text-align:center; margin: 60px 0;'>
                     <div style='font-size:200px; margin-bottom:20px;'>🥁</div>
                     <div style='font-size:32px; font-weight:bold; color:#e17055; animation: pulse 0.5s infinite;'>
-                        두둠... 두둠... 두둠...
+                        두구두구두구두구….
                     </div>
                     <style>
                         @keyframes pulse {
@@ -432,3 +432,5 @@ elif menu == "오늘의 칭찬샤워":
                 file_name=f"praise_{today_key}.csv",
                 mime='text/csv'
             )
+
+
