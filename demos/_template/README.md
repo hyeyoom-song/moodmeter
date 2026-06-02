@@ -31,7 +31,7 @@ PIN과 학생 이름은 app.py의 STUDENT_LIST와 STUDENT_PINS에서 학생들 �
 
 ---
 
-## 3. 주요 기능 상헤
+## 3. 주요 기능 상세
 
 ```bash
 # 1) 기능 1: 무드미터
