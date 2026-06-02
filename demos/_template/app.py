@@ -53,12 +53,12 @@ if "logged_in_student" not in st.session_state:
     st.session_state.logged_in_student = None
 
 STUDENT_PINS = {
+    "선생님": "0000",
     "김철수": "1111",
     "이영희": "2222", 
     "박민준": "3333",
     "최다은": "4444",
-    "정하늘": "5555",
-    "선생님": "0000"
+    "정하늘": "5555"
 }
 
 if not st.session_state.logged_in_student:
