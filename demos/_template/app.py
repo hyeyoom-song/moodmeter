@@ -67,7 +67,7 @@ if not st.session_state.logged_in_student:
     
     col1, col2 = st.columns(2)
     with col1:
-        name = st.selectbox("이름 선택", STUDENT_LIST + ["선생님"])
+        name = st.selectbox("이름 선택", ["선생님"] + STUDENT_LIST )
     with col2:
         pin = st.text_input("PIN (4자리)", type="password", max_chars=4)
     
