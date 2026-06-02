@@ -97,21 +97,31 @@ if menu == "무드미터":
     st.title('학급 정서 기록🧡')
     st.header("오늘의 무드미터")
 
+    # 로그인한 학생 정보 표시
     selected_name = st.session_state.logged_in_student
     st.info(f"😊 {selected_name}의 무드미터를 기록하고 있습니다")
 
-    selected_date = st.date_input("날짜를 선택하세요", value=today, key="mood_date_picker")
+    # 날짜 선택 (년/월/일)
+    selected_date = st.date_input(
+        "날짜를 선택하세요",
+        value=today,
+        key="mood_date_picker"
+    )
     
+    # 선택된 날짜에서 년, 월, 일 추출
     selected_year = selected_date.year
     selected_month = selected_date.month
     selected_day = selected_date.day
     select_ym = f"{selected_year}-{str(selected_month).zfill(2)}"
 
+    # 현재 학생/연월의 데이터
     user_month_data = st.session_state.mood_data[selected_name].setdefault(select_ym, {})
     prev_idx = user_month_data.get(selected_day, None)
 
+    # 감정 선택
     st.subheader("감정을 골라주세요")
 
+    # 선택된 감정 표시 박스
     if prev_idx is not None:
         emo_name, emo_emoji, emo_color = EMOTIONS[prev_idx]
         st.markdown(
@@ -121,6 +131,7 @@ if menu == "무드미터":
             unsafe_allow_html=True
         )
 
+    # 4x4 st.button 그리드. 각 버튼은 고유 key를 가짐
     for r in range(4):
         cols = st.columns(4)
         for c in range(4):
@@ -129,18 +140,26 @@ if menu == "무드미터":
             is_selected = (prev_idx == idx)
             btn_key = f"emo_btn_{idx}_{selected_name}_{select_ym}_{selected_day}"
             btn_label = f"{emoji} {emotion}"
-            if cols[c].button(btn_label, key=btn_key, use_container_width=True, type="primary" if is_selected else "secondary"):
+            if cols[c].button(
+                btn_label,
+                key=btn_key,
+                use_container_width=True,
+                type="primary" if is_selected else "secondary"
+            ):
                 user_month_data[selected_day] = idx
                 st.session_state.mood_data[selected_name][select_ym] = user_month_data
                 st.rerun()
 
+    # 감정 달력 - 월 이동 가능하도록 수정
     st.subheader(f"{selected_name} 감정 달력")
     
+    # 달력 표시용 년/월 상태 초기화
     if "calendar_view_year" not in st.session_state:
         st.session_state.calendar_view_year = selected_year
     if "calendar_view_month" not in st.session_state:
         st.session_state.calendar_view_month = selected_month
 
+    # 월 이동 버튼 및 월 표기 - 동일 너비로 조정
     col_prev, col_title, col_next = st.columns([0.5, 2, 0.5])
     with col_prev:
         if st.button("◀", key="calendar_prev", use_container_width=True):
@@ -165,13 +184,16 @@ if menu == "무드미터":
             unsafe_allow_html=True
         )
 
+    # 달력 표시용 년/월
     cal_year = st.session_state.calendar_view_year
     cal_month = st.session_state.calendar_view_month
     cal_ym = f"{cal_year}-{str(cal_month).zfill(2)}"
 
+    # 달력에 표시할 데이터 가져오기
     cal_month_data = st.session_state.mood_data[selected_name].setdefault(cal_ym, {})
 
     first_weekday, num_days = calendar.monthrange(cal_year, cal_month)
+    # monthrange는 월요일=0 기준이므로, 일요일을 첫 칸으로 두기 위해 보정
     sunday_first_weekday = (first_weekday + 1) % 7
 
     days_grid = np.full((6, 7), None)
@@ -183,7 +205,7 @@ if menu == "무드미터":
         if col > 6:
             row += 1
             col = 0
-            day += 1
+        day += 1
 
     week_labels = ['일', '월', '화', '수', '목', '금', '토']
     this_is_today = (today.year == cal_year and today.month == cal_month)
@@ -211,10 +233,12 @@ if menu == "무드미터":
             if d is not None:
                 em_idx = cal_month_data.get(int(d), None)
                 if em_idx is not None:
+                    # EMOTIONS에서 직접 색상 가져오기
                     bgcolor = EMOTIONS[em_idx][2]
                     emoji_cell = EMOTIONS[em_idx][1]
                     label_cell = EMOTIONS[em_idx][0]
                 
+                # 배경색 결정: 오늘이거나 선택된 날짜일 경우 다른 처리
                 if is_today or is_selected:
                     final_bgcolor = bgcolor
                     shadow = "box-shadow:inset 0 0 0 3px #FFD93D;"
@@ -238,6 +262,7 @@ if menu == "무드미터":
         cal_tbl += "</tr>"
     cal_tbl += "</table>"
     st.markdown(cal_tbl, unsafe_allow_html=True)
+
 
 
 #############################################
