@@ -23,7 +23,7 @@ EMOTIONS = [
     ("당황", "😳", "#FFABAB"),   ("외로움", "🥺", "#B6EADA"),
 ]
 
-# 세션 상태 초기화
+# 세션 상태 초기화 (기존 코드)
 if 'mood_data' not in st.session_state:
     st.session_state.mood_data = {name: {} for name in STUDENT_LIST + ["선생님"]}
 elif "선생님" not in st.session_state.mood_data:
@@ -34,9 +34,10 @@ if 'praise_shower' not in st.session_state:
     st.session_state.praise_shower = {}
 if 'student_gift_opening' not in st.session_state:
     st.session_state.student_gift_opening = {}
-# [추가] 북소리 애니메이션 완료를 기억하는 세션 상태
 if 'student_gift_viewed' not in st.session_state:
     st.session_state.student_gift_viewed = {}
+if 'hero_revealed' not in st.session_state:   # ← 이 줄 추가
+    st.session_state.hero_revealed = {}
 
 # 오늘, 이번달, 어제
 today = date.today()
