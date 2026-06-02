@@ -263,81 +263,103 @@ if menu == "무드미터":
 
 
 #############################################
-# 2. 오늘의 주인공 PAGE
+# 2. 오늘의 주인공 PAGE - 선물 상자 버전
 #############################################
 elif menu == "오늘의 주인공":
     st.title('학급 정서 기록🧡')
-    st.header("오늘의 주인공 룰렛 🎡")
+    st.header("오늘의 주인공 🎁")
 
-    # 어제 뽑힌 학생은 오늘 룰렛 대상에서 제외하되, 전체 룰렛판에는 표시
+    # 어제 뽑힌 학생은 오늘 룰렛 대상에서 제외
     exclude_name = st.session_state.hero_pick_history.get(yesterday_key, None)
-    roulette_names = STUDENT_LIST.copy()
     available_names = [name for name in STUDENT_LIST if name != exclude_name]
 
     # 오늘 이미 뽑혔으면 고정
     today_hero = st.session_state.hero_pick_history.get(today_key, None)
 
-    def draw_roulette(names, startangle=0, winner_idx=None):
-        n = len(names)
-        base_colors = ['#63cdda', '#ea8685', '#f6b93b', '#78e08f', '#e17055']
-        colors = (base_colors * ((n // len(base_colors)) + 1))[:n]
-        if winner_idx is not None:
-            colors = [colors[i] if i != winner_idx else "#FFD93D" for i in range(n)]
-        fig = go.Figure(go.Pie(
-            labels=names, values=[1] * n,
-            hole=0, marker_colors=colors, sort=False,
-            textinfo='label+percent', rotation=startangle, direction='clockwise'
-        ))
-        fig.add_shape(type="line", x0=0.5, y0=1.05, x1=0.5, y1=1.20,
-                      line=dict(color="#ff5555", width=6), xref="paper", yref="paper")
-        fig.add_shape(type="path",
-                      path="M 0.47 1.19 L 0.53 1.19 L 0.5 1.26 Z",
-                      fillcolor="#ff5555", line=dict(color="#ff5555", width=1), xref="paper", yref="paper")
-        fig.update_layout(margin=dict(t=0, b=0, l=0, r=0), showlegend=False, width=410, height=410)
-        return fig
+    # 선물 상자 상태 관리
+    if "gift_box_opened" not in st.session_state:
+        st.session_state.gift_box_opened = False
+    if "gift_opening_animation" not in st.session_state:
+        st.session_state.gift_opening_animation = False
 
-    placeholder = st.empty()
-    c1, c2, c3 = st.columns([2, 2, 1])
-    with c2:
-        start = st.button("START!", key=f"roulette-start-{today_key}")
-
-    winner = None
+    # 선물 상자 표시
+    gift_placeholder = st.empty()
 
     if today_hero:
-        winner = today_hero
-        idx = roulette_names.index(winner)
-        placeholder.plotly_chart(draw_roulette(roulette_names, winner_idx=idx), use_container_width=True)
-        st.balloons()
-        st.success(f"오늘의 주인공은 {winner}입니다. {winner}과 함께 멋진 하루 보내세요!")
-    elif start and len(available_names) > 0:
-        n = len(available_names)
-        total_angle = 360 * random.randint(3, 5) + random.randint(0, 359)
-        steps = 20
-        sleep_step = 0.08
-        for i in range(steps):
-            cur_angle = int(total_angle * (i + 1) / steps)
-            placeholder.plotly_chart(draw_roulette(available_names, startangle=cur_angle), use_container_width=True)
-            time.sleep(sleep_step + i * 0.005)
-        per = 360 / n
-        idx = int(((360 - (total_angle % 360) + per / 2) % 360) // per)
-        winner = available_names[idx]
-        st.session_state.hero_pick_history[today_key] = winner
-        placeholder.plotly_chart(
-            draw_roulette(roulette_names, winner_idx=roulette_names.index(winner)),
-            use_container_width=True
-        )
-        st.balloons()
-        st.markdown(
-            f"<h1 style='color:#e17055; font-size:48px; text-align:center;'>{winner}</h1>",
-            unsafe_allow_html=True
-        )
-        st.success(f"오늘의 주인공은 {winner}입니다. {winner}과 함께 멋진 하루 보내세요!")
+        # 이미 주인공이 정해진 경우
+        with gift_placeholder.container():
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                st.markdown(
+                    """
+                    <div style='text-align:center;'>
+                        <div style='font-size:120px;'>🎁</div>
+                        <div style='font-size:14px; color:#999;'>이미 선택되었습니다</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+            st.info(f"✨ 오늘의 주인공: **{today_hero}**")
+            st.balloons()
     else:
-        placeholder.plotly_chart(draw_roulette(roulette_names), use_container_width=True)
-        if today_hero:
-            st.success(f"오늘의 주인공은 {today_hero}입니다. {today_hero}과 함께 멋진 하루 보내세요!")
+        # 아직 선택되지 않은 경우
+        if not st.session_state.gift_opening_animation:
+            # 선물 상자 표시
+            with gift_placeholder.container():
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    st.markdown(
+                        """
+                        <div style='text-align:center;'>
+                            <div style='font-size:150px; cursor:pointer; transition:transform 0.1s;'>🎁</div>
+                            <div style='font-size:16px; color:#666; margin-top:20px;'>클릭하면 주인공이 나타나요!</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
+            # 선물 상자 클릭 버튼
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                if st.button("🎁 선물을 열어보세요!", key="open_gift", use_container_width=True):
+                    st.session_state.gift_opening_animation = True
+                    st.rerun()
         else:
-            st.info("아직 주인공이 선정되지 않았습니다!")
+            # 열리는 애니메이션 및 결과 표시
+            with gift_placeholder.container():
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    # 북소리 효과 시뮬레이션
+                    st.markdown(
+                        """
+                        <div style='text-align:center;'>
+                            <div style='font-size:100px; margin-bottom:20px;'>🥁</div>
+                            <div style='font-size:24px; font-weight:bold; color:#e17055; animation: pulse 0.5s infinite;'>
+                                두둠... 두둠... 두둠...
+                            </div>
+                            <style>
+                                @keyframes pulse {
+                                    0%, 100% { opacity: 1; }
+                                    50% { opacity: 0.5; }
+                                }
+                            </style>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+            
+            # 2초 대기 (북소리 효과)
+            time.sleep(2)
+            
+            # 주인공 선택
+            if len(available_names) > 0:
+                winner = random.choice(available_names)
+                st.session_state.hero_pick_history[today_key] = winner
+                st.session_state.gift_opening_animation = False
+                st.rerun()
+            else:
+                st.error("선택할 학생이 없습니다!")
+                st.session_state.gift_opening_animation = False
 
 
 #############################################
