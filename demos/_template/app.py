@@ -362,6 +362,8 @@ elif menu == "오늘의 주인공":
 
         # 이제 애니메이션을 완료했으므로 상태 업데이트
         st.session_state.student_gift_viewed[current_student] = True
+        st.session_state.hero_revealed[today_key] = True  # ← 기존에 추가한 줄
+        st.rerun()  # ← 이 줄 추가
         
         st.markdown(
             """
