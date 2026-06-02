@@ -289,16 +289,41 @@ elif menu == "오늘의 주인공":
         st.session_state.student_gift_opening[current_student] = False
 
     if my_revealed and today_hero:
-        # 상황 1: 내가 이미 직접 열어본 경우 → 결과만 표시
+        # 상황 1: 내가 이미 직접 열어본 경우 → 결과 + 풍선 애니메이션
         st.markdown(
             """
             <div style='text-align:center; margin: 40px 0;'>
                 <div style='font-size:180px; margin-bottom:20px;'>🎉</div>
                 <div style='font-size:48px; font-weight:bold; color:#e17055; margin-bottom:30px;'>{}</div>
             </div>
+            <style>
+            @keyframes rise {{
+                0%   {{ transform: translateY(0) rotate(0deg); opacity: 1; }}
+                100% {{ transform: translateY(-100vh) rotate(20deg); opacity: 0; }}
+            }}
+            .balloon {{
+                position: fixed;
+                bottom: -80px;
+                font-size: 48px;
+                animation: rise linear infinite;
+                z-index: 9999;
+                pointer-events: none;
+            }}
+            </style>
+            <div class='balloon' style='left:5%;  animation-duration:3.2s; animation-delay:0.0s;'>🎈</div>
+            <div class='balloon' style='left:15%; animation-duration:2.8s; animation-delay:0.3s;'>🎈</div>
+            <div class='balloon' style='left:25%; animation-duration:3.5s; animation-delay:0.6s;'>🎊</div>
+            <div class='balloon' style='left:35%; animation-duration:2.6s; animation-delay:0.1s;'>🎈</div>
+            <div class='balloon' style='left:45%; animation-duration:3.0s; animation-delay:0.5s;'>🎊</div>
+            <div class='balloon' style='left:55%; animation-duration:2.9s; animation-delay:0.2s;'>🎈</div>
+            <div class='balloon' style='left:65%; animation-duration:3.3s; animation-delay:0.4s;'>🎊</div>
+            <div class='balloon' style='left:75%; animation-duration:2.7s; animation-delay:0.7s;'>🎈</div>
+            <div class='balloon' style='left:85%; animation-duration:3.1s; animation-delay:0.0s;'>🎊</div>
+            <div class='balloon' style='left:93%; animation-duration:2.5s; animation-delay:0.3s;'>🎈</div>
             """.format(today_hero),
             unsafe_allow_html=True
         )
+        st.balloons()
 
     elif not st.session_state.student_gift_opening[current_student]:
         # 상황 2: 버튼을 아직 누르지 않은 경우 → 선물 상자 표시
