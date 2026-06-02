@@ -433,4 +433,3 @@ elif menu == "오늘의 칭찬샤워":
                 mime='text/csv'
             )
 
-
