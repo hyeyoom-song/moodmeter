@@ -7,8 +7,6 @@ import plotly.graph_objects as go
 import random
 import time
 import io
-import speech_recognition as sr
-from pydub import AudioSegment
 
 # 학생 목록
 STUDENT_LIST = ["김철수", "이영희", "박민준", "최다은", "정하늘"]
@@ -318,7 +316,7 @@ elif menu == "오늘의 주인공":
                 <div style='text-align:center; margin: 60px 0;'>
                     <div style='font-size:200px; margin-bottom:20px;'>🥁</div>
                     <div style='font-size:32px; font-weight:bold; color:#e17055; animation: pulse 0.5s infinite;'>
-                        두둠... 두둠... 두둠...
+                        두구두구두구두구….
                     </div>
                     <style>
                         @keyframes pulse {
@@ -373,83 +371,14 @@ elif menu == "오늘의 칭찬샤워":
         if today_key not in st.session_state.praise_shower:
             st.session_state.praise_shower[today_key] = []
 
-        # 탭을 나누어 텍스트 입력과 음성 입력 제공
-        tab1, tab2 = st.tabs(["✍️ 텍스트로 남기기", "🎤 음성으로 남기기"])
-        
-        with tab1:
-            praise_text = st.text_area(f"{today_hero}에게 칭찬 한마디 남기기!", key="praise_text", height=100)
-            if st.button("칭찬 남기기", key="btn_text_praise"):
-                if praise_text.strip():
-                    st.session_state.praise_shower[today_key].append(praise_text.strip())
-                    st.success("칭찬이 정상적으로 등록되었습니다!")
-                    st.rerun()
-                else:
-                    st.warning("칭찬을 입력해 주세요.")
-        
-        with tab2:
-            st.write("🎤 마이크를 누르고 칭찬 한마디를 말해주세요!")
-            
-            audio_data = st.audio_input("음성 녹음", key="praise_audio")
-            
-            if audio_data is not None:
-                # 음성 파일을 저장하고 인식
-                with st.spinner("음성을 텍스트로 변환 중..."):
-                    try:
-                        # 음성 데이터를 WAV 형식으로 저장
-                        audio_bytes = audio_data.getvalue()
-                        
-                        # speech_recognition 라이브러리 사용
-                        recognizer = sr.Recognizer()
-                        
-                        # 음성 데이터를 AudioData 객체로 변환
-                        audio = sr.AudioData(audio_bytes, 44100, 2)
-                        
-                        # Google Speech Recognition API 사용 (무료)
-                        recognized_text = recognizer.recognize_google(audio, language='ko-KR')
-                        
-                        st.success(f"인식된 텍스트: **{recognized_text}**")
-                        
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            if st.button("✓ 이 칭찬 저장", key="btn_confirm_praise"):
-                                st.session_state.praise_shower[today_key].append(recognized_text)
-                                st.success("칭찬이 정상적으로 등록되었습니다!")
-                                st.rerun()
-                        
-                        with col2:
-                            if st.button("✎ 수정하기", key="btn_edit_praise"):
-                                st.session_state['edit_mode'] = True
-                                st.session_state['edited_praise'] = recognized_text
-                                st.rerun()
-                        
-                        # 수정 모드
-                        if st.session_state.get('edit_mode', False):
-                            edited_text = st.text_area(
-                                "칭찬을 수정하세요:",
-                                value=st.session_state.get('edited_praise', ''),
-                                key="edit_praise_text",
-                                height=80
-                            )
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                if st.button("수정 완료", key="btn_save_edit"):
-                                    st.session_state.praise_shower[today_key].append(edited_text.strip())
-                                    st.session_state['edit_mode'] = False
-                                    st.success("칭찬이 정상적으로 등록되었습니다!")
-                                    st.rerun()
-                            with col2:
-                                if st.button("취소", key="btn_cancel_edit"):
-                                    st.session_state['edit_mode'] = False
-                                    st.rerun()
-                    
-                    except sr.UnknownValueError:
-                        st.error("음성을 인식할 수 없습니다. 다시 시도해주세요.")
-                    except sr.RequestError as e:
-                        st.error(f"음성 인식 서비스 오류: {e}")
-                    except Exception as e:
-                        st.error(f"오류 발생: {e}")
+        praise_text = st.text_area(f"{today_hero}에게 칭찬 한마디 남기기!", key="praise_text")
+        if st.button("칭찬 남기기"):
+            if praise_text.strip():
+                st.session_state.praise_shower[today_key].append(praise_text.strip())
+                st.success("칭찬이 정상적으로 등록되었습니다!")
+            else:
+                st.warning("칭찬을 입력해 주세요.")
 
-        st.divider()
         st.subheader("모두가 남긴 칭찬들 🌻")
         all_praises = st.session_state.praise_shower[today_key]
         if "editing_praise_idx" not in st.session_state:
@@ -503,3 +432,5 @@ elif menu == "오늘의 칭찬샤워":
                 file_name=f"praise_{today_key}.csv",
                 mime='text/csv'
             )
+
+
