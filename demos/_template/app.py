@@ -271,7 +271,7 @@ if menu == "🎨 무드미터":
 #############################################
 elif menu == "🎁 오늘의 주인공":
     st.title('학급 정서 기록🧡')
-    st.header("오늘의 주인공 🎁")
+    st.header("오늘의 주인공은?")
 
     current_student = st.session_state.logged_in_student
 
@@ -337,7 +337,7 @@ elif menu == "🎁 오늘의 주인공":
         )
         col1, col2, col3 = st.columns([0.5, 2, 0.5])
         with col2:
-            if st.button("🎁 오늘의 주인공 확인", key="open_gift", use_container_width=True):
+            if st.button("🎈 오늘의 주인공 확인", key="open_gift", use_container_width=True):
                 st.session_state.student_gift_opening[current_student] = True
                 st.rerun()
 
