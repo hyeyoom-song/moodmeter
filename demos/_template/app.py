@@ -367,9 +367,8 @@ elif menu == "오늘의 주인공":
         st.balloons()
 
 
-
 #############################################
-# 3. 오늘의 칭찬샤워 PAGE (가장 안전한 postMessage 연동 버전)
+# 3. 오늘의 칭찬샤워 PAGE (가장 안전한 패키지 기반 연동 버전)
 #############################################
 elif menu == "오늘의 칭찬샤워":
     st.title('학급 정서 기록🧡')
@@ -385,152 +384,59 @@ elif menu == "오늘의 칭찬샤워":
         if today_key not in st.session_state.praise_shower:
             st.session_state.praise_shower[today_key] = []
 
-        # (1) 요청하신 대로 '(저학년용)' 문구를 제거했습니다.
+        # (1) 요청하신 제목 문구 수정 완료
         st.markdown("### 🎤 목소리 또는 타자로 칭찬 남기기")
-        st.caption("타자를 쳐도 되고, [🔴 마이크 켜고 말하기]를 눌러 목소리로 입력창을 채운 뒤 바로 등록할 수도 있어요!")
+        st.caption("[🔴 마이크 켜고 말하기] 버튼을 누르고 말을 한 뒤 [⏹️ 정지]를 누르면 입력창에 글자가 자동으로 들어갑니다!")
 
-        # --- 🔗 HTML-파이썬 간 양방향 컴포넌트 데이터 수신부 ---
-        import streamlit.components.v1 as components
-        
-        # HTML 내부의 [등록] 버튼을 누르면 아래 컴포넌트가 실행되면서 값을 리턴합니다.
-        # st_audiorec/st_stt와 유사하게 표준 메커니즘을 적용한 커스텀 컴포넌트 구조입니다.
-        praise_receiver_html = f"""
-        <div style="background: #fafafa; padding: 20px; border-radius: 12px; border: 2px dashed #ffb84c; font-family: sans-serif; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+        # --- 안전한 Streamlit 음성인식 공식 컴포넌트 도입 ---
+        from streamlit_mic_recorder import speech_to_text
+
+        # 세션에 임시로 텍스트를 저장할 공간 생성
+        if "mic_text_buffer" not in st.session_state:
+            st.session_state.mic_text_buffer = ""
+
+        # 디자인을 위한 컨테이너 정렬
+        with st.container(border=True):
+            col_mic, col_status = st.columns([1, 2])
             
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                <button id="start-btn" type="button" style="background-color: #ff7675; color: white; border: none; padding: 10px 18px; font-size: 14px; border-radius: 20px; cursor: pointer; font-weight: bold; box-shadow: 0 3px 5px rgba(0,0,0,0.1); transition: 0.2s;">
-                    🔴 마이크 켜고 말하기
-                </button>
-                <span id="status" style="color: #2ecc71; font-size: 13px; font-weight: bold;">📝 직접 쓰거나 말해보세요.</span>
-            </div>
-
-            <div style="margin-bottom: 15px;">
-                <textarea id="praise-textarea" style="width: 100%; height: 110px; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; resize: none; color: #222; line-height: 1.5;" placeholder="{today_hero}에게 하고 싶은 말을 적거나 마이크 버튼을 누르고 말하세요..."></textarea>
-            </div>
-
-            <button id="submit-btn" type="button" style="width: 100%; background-color: #4cd137; color: white; border: none; padding: 13px; font-size: 16px; border-radius: 8px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: 0.2s;">
-                💌 이 칭찬 전하기 (등록)
-            </button>
-        </div>
-
-        <script>
-            const startBtn = document.getElementById('start-btn');
-            const submitBtn = document.getElementById('submit-btn');
-            const statusText = document.getElementById('status');
-            const textarea = document.getElementById('praise-textarea');
-
-            // 브라우저 내장 음성인식 API 설정
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            with col_mic:
+                # 보안 우회가 필요 없는 정석 음성 인식 엔진 버튼 생성
+                text_from_mic = speech_to_text(
+                    start_prompt="🔴 마이크 켜고 말하기",
+                    stop_prompt="⏹️ 말하기 끝 (정지)",
+                    language='ko',
+                    key='praise_shower_mic'
+                )
             
-            if (!SpeechRecognition) {{
-                statusText.innerText = "❌ 크롬/웨일 브라우저 필요";
-                statusText.style.color = "#ff7675";
-                startBtn.disabled = true;
-                startBtn.style.backgroundColor = "#ccc";
-            }} else {{
-                const recognition = new SpeechRecognition();
-                recognition.lang = 'ko-KR';
-                recognition.interimResults = true; // 실시간 변환 활성화
-                recognition.maxAlternatives = 1;
+            with col_status:
+                if text_from_mic:
+                    st.session_state.mic_text_buffer = text_from_mic
+                    st.success("✅ 목소리 변환 성공! 아래 확인 후 등록하세요.")
+                else:
+                    st.info("💡 타자를 치거나 마이크를 켜보세요.")
 
-                let finalTranscript = '';
+            # --- 📝 단일 통합 텍스트 입력창 및 수정 칸 ---
+            praise_input = st.text_area(
+                label=f"📝 {today_hero}에게 보낼 칭찬 내용",
+                value=st.session_state.mic_text_buffer,
+                placeholder="여기에 직접 타자를 치거나, 위 마이크 버튼을 눌러 말해보세요...",
+                height=120,
+                key="integrated_praise_input_area"
+            )
 
-                startBtn.onclick = () => {{
-                    try {{
-                        textarea.focus();
-                        recognition.start();
-                    }} catch(e) {{ }}
-                }};
-
-                recognition.onstart = () => {{
-                    statusText.innerText = "🎤 음성 인식 중...";
-                    statusText.style.color = "#e17055";
-                    startBtn.style.backgroundColor = "#ffeaa7";
-                    startBtn.style.color = "#222";
-                    startBtn.innerText = "👂 듣고 있어요";
-                }};
-
-                recognition.onresult = (event) => {{
-                    let interimTranscript = '';
-                    for (let i = event.resultIndex; i < event.results.length; ++i) {{
-                        if (event.results[i].isFinal) {{
-                            finalTranscript += event.results[i][0].transcript + ' ';
-                        }} else {{
-                            interimTranscript += event.results[i][0].transcript;
-                        }}
-                    }}
-                    textarea.value = finalTranscript + interimTranscript;
-                }};
-
-                recognition.onerror = () => {{
-                    statusText.innerText = "❌ 마이크 권한 오류";
-                    statusText.style.color = "#ff7675";
-                    resetMic();
-                }};
-
-                recognition.onend = () => {{
-                    statusText.innerText = "✅ 음성변환 완료!";
-                    statusText.style.color = "#2ecc71";
-                    resetMic();
-                }};
-
-                function resetMic() {{
-                    startBtn.style.backgroundColor = "#ff7675";
-                    startBtn.style.color = "white";
-                    startBtn.innerText = "🔴 마이크 켜고 말하기";
-                    finalTranscript = textarea.value;
-                }}
-            }}
-
-            // 🌟 가장 안전한 Streamlit 표준 메커니즘 연동 데이터 전송 🌟
-            submitBtn.onclick = () => {{
-                const textValue = textarea.value.trim();
-                if (!textValue) {{
-                    alert("칭찬 내용을 채워주세요!");
-                    return;
-                }}
-                
-                // Streamlit의 세션과 통신하기 위해 부모창에 보안 메시지 전송
-                window.parent.postMessage({{
-                    type: 'streamlit:setComponentValue',
-                    value: textValue
-                }}, '*');
-            }};
-        </script>
-        """
-        
-        # HTML 렌더링 함수가 사용자 동작 결과(등록 텍스트)를 받아와 변수에 즉시 할당합니다.
-        response_text = components.html(integrated_box_html=praise_receiver_html, height=240, key="integrated_stt_box")
-
-        # HTML 컴포넌트 내부에서 등록 데이터가 감지되었을 때 파이썬 데이터베이스에 적재 프로세스
-        # 수신 성공 시 세션 상태에 추가하고 화면을 리프레시합니다.
-        # postMessage 수신 데이터를 streamlit 버전에 맞게 읽어오는 트릭 로직
-        if "prev_raw_data" not in st.session_state:
-            st.session_state.prev_raw_data = None
-
-        # 컴포넌트 특성상 임의의 가상 트리거를 Streamlit 기본 text_input과 우회 연동하기 위한 안정화 처리
-        # (만약 컴포넌트 리턴값이 동작하지 않는 특수 환경을 위해 주소창 폴백 백업도 유지)
-        query_params = st.query_params
-        js_text = query_params.get("js_praise_text", [""])[0] if "js_praise_text" in query_params else ""
-        
-        # 주소창 또는 포스트 메시지 중 데이터가 넘어왔다면 처리
-        if js_text:
-            new_praise = js_text.strip()
-            st.session_state.praise_shower[today_key].append((current_student, new_praise))
-            st.success("🎉 칭찬이 정상적으로 등록되어 아래 리스트에 추가되었습니다!")
-            st.query_params.clear()
-            time.sleep(0.4)
-            st.rerun()
-
-        # 별도 파이썬 수동 처리 백업 입력기 (보안망 차단 시용 대비용 히든 스위치)
-        with st.expanders("위의 초록색 버튼으로 등록이 안 될 때만 펼치세요! (비상용 수동 등록창)", expanded=False):
-            backup_text = st.text_input("여기에 음성 인식된 글자를 복사하거나 직접 쳐서 등록하세요.")
-            if st.button("비상 등록하기"):
-                if backup_text.strip():
-                    st.session_state.praise_shower[today_key].append((current_student, backup_text.strip()))
-                    st.success("비상용 등록 완료!")
-                    time.sleep(0.4)
+            # --- 💌 최종 전하기 등록 버튼 ---
+            if st.button("💌 이 칭찬 전하기 (등록)", use_container_width=True, type="primary"):
+                if praise_input.strip():
+                    # 데이터 연동 저장 (작성자 이름, 내용)
+                    st.session_state.praise_shower[today_key].append((current_student, praise_input.strip()))
+                    st.success("🎉 칭찬이 '모두가 남긴 칭찬들'에 성공적으로 등록되었습니다!")
+                    
+                    # 다음 사람 입력을 위해 입력 칸 초기화
+                    st.session_state.mic_text_buffer = ""
+                    time.sleep(0.5)
                     st.rerun()
+                else:
+                    st.warning("보낼 칭찬 내용을 입력하거나 음성으로 말해 주세요.")
 
         # --- 🌻 모두가 남긴 칭찬들 리스트 노출 파트 ---
         st.markdown("---")
