@@ -367,8 +367,10 @@ elif menu == "오늘의 칭찬샤워":
     current_student = st.session_state.logged_in_student
     today_hero = st.session_state.hero_pick_history.get(today_key, None)
     
-    if not today_hero:
-        st.warning("아직 오늘의 주인공이 선정되지 않았습니다! '오늘의 주인공' 탭에서 뽑아주세요.")
+    hero_revealed = st.session_state.hero_revealed.get(current_student, {}).get(today_key, False)
+
+    if not today_hero or not hero_revealed:
+        st.warning("아직 오늘의 주인공이 공개되지 않았습니다! '오늘의 주인공' 탭에서 선물 상자를 열어주세요. 🎁")
     else:
         st.subheader(f"오늘의 주인공: {today_hero}")
         if today_key not in st.session_state.praise_shower:
