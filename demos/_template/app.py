@@ -367,9 +367,8 @@ elif menu == "오늘의 주인공":
         st.balloons()
 
 
-
 #############################################
-# 3. 오늘의 칭찬샤워 PAGE (100% 무에러 순수 웹 완성형 버전)
+# 3. 오늘의 칭찬샤워 PAGE
 #############################################
 elif menu == "오늘의 칭찬샤워":
     st.title('학급 정서 기록🧡')
@@ -385,147 +384,102 @@ elif menu == "오늘의 칭찬샤워":
         if today_key not in st.session_state.praise_shower:
             st.session_state.praise_shower[today_key] = []
 
-        # 요청하신 대로 (저학년용) 글자는 깔끔히 제거했습니다.
         st.markdown("### 🎤 목소리 또는 타자로 칭찬 남기기")
-        st.caption("타자를 쳐도 되고, [🔴 마이크 켜고 말하기]를 눌러 목소리로 입력창을 채운 뒤 바로 등록할 수도 있어요!")
+        st.caption("타자를 쳐도 되고, [🔴 마이크 켜고 말하기]를 눌러 목소리로 입력한 뒤 등록할 수도 있어요!")
 
-        # --- 🔗 URL 파라미터를 이용한 초안전 데이터 수신 로직 ---
-        query_params = st.query_params
-        if "msg" in query_params:
-            # 주소창을 통해 넘어온 아이들의 칭찬 데이터 추출
-            praise_from_js = query_params["msg"].strip()
-            if praise_from_js:
-                # 데이터베이스(세션)에 즉시 연동 및 추가
-                st.session_state.praise_shower[today_key].append((current_student, praise_from_js))
-                st.success("🎉 칭찬이 정상적으로 등록되어 아래 리스트에 추가되었습니다!")
-                
-                # 주소창 찌꺼기 파라미터 청소 후 리프레시
-                st.query_params.clear()
-                time.sleep(0.4)
-                st.rerun()
-
-        # --- 📦 HTML/JS 올인원 입력 카드 (보안망 완벽 우회형) ---
+        # ── 음성인식 버튼 (JS → sessionStorage에 저장) ──────────────────────
         import streamlit.components.v1 as components
 
-        # 클라우드 보안 환경에서도 주소 변경권한을 완벽히 획득하는 탑-레벨 주소 제어 방식 적용
-        integrated_box_html = f"""
-        <div style="background: #fafafa; padding: 20px; border-radius: 12px; border: 2px dashed #ffb84c; font-family: sans-serif; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-            
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                <button id="start-btn" type="button" style="background-color: #ff7675; color: white; border: none; padding: 10px 18px; font-size: 14px; border-radius: 20px; cursor: pointer; font-weight: bold; box-shadow: 0 3px 5px rgba(0,0,0,0.1);">
-                    🔴 마이크 켜고 말하기
-                </button>
-                <span id="status" style="color: #2ecc71; font-size: 13px; font-weight: bold;">📝 직접 쓰거나 말해보세요.</span>
-            </div>
-
-            <div style="margin-bottom: 15px;">
-                <textarea id="praise-textarea" style="width: 100%; height: 110px; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; color: #222; line-height: 1.5;" placeholder="{today_hero}에게 하고 싶은 말을 적거나 마이크 버튼을 누르고 말하세요..."></textarea>
-            </div>
-
-            <form id="praise-form" action="" method="get" target="_parent">
-                <input type="hidden" id="msg-hidden" name="msg" value="">
-                <button id="submit-btn" type="button" style="width: 100%; background-color: #4cd137; color: white; border: none; padding: 13px; font-size: 16px; border-radius: 8px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                    💌 이 칭찬 전하기 (등록)
-                </button>
-            </form>
+        voice_html = f"""
+        <div style="margin-bottom:8px;">
+            <button id="start-btn" type="button"
+                style="background:#ff7675;color:white;border:none;padding:10px 18px;
+                       font-size:14px;border-radius:20px;cursor:pointer;font-weight:bold;">
+                🔴 마이크 켜고 말하기
+            </button>
+            <span id="status" style="margin-left:12px;color:#2ecc71;font-size:13px;font-weight:bold;">
+                📝 직접 쓰거나 말해보세요.
+            </span>
         </div>
-
         <script>
-            const startBtn = document.getElementById('start-btn');
-            const submitBtn = document.getElementById('submit-btn');
-            const statusText = document.getElementById('status');
-            const textarea = document.getElementById('praise-textarea');
-            const form = document.getElementById('praise-form');
-            const hiddenInput = document.getElementById('msg-hidden');
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const startBtn = document.getElementById('start-btn');
+        const statusEl = document.getElementById('status');
 
-            // 부모 창의 실제 주소를 가져와 form의 목적지(action)로 강제 고정
-            form.action = window.parent.location.origin + window.parent.location.pathname;
+        if (!SpeechRecognition) {{
+            statusEl.innerText = "❌ 크롬/웨일 브라우저가 필요해요.";
+            statusEl.style.color = "#ff7675";
+            startBtn.disabled = true;
+            startBtn.style.background = "#ccc";
+        }} else {{
+            const rec = new SpeechRecognition();
+            rec.lang = 'ko-KR';
+            rec.interimResults = true;
+            let final = '';
 
-            // 브라우저 음성인식 엔진 세팅
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            
-            if (!SpeechRecognition) {{
-                statusText.innerText = "❌ 크롬이나 웨일 브라우저가 필요해요.";
-                statusText.style.color = "#ff7675";
-                startBtn.disabled = true;
-                startBtn.style.backgroundColor = "#ccc";
-            }} else {{
-                const recognition = new SpeechRecognition();
-                recognition.lang = 'ko-KR';
-                recognition.interimResults = true; // 실시간 변환 켜기
-                recognition.maxAlternatives = 1;
+            startBtn.onclick = () => {{ try {{ rec.start(); }} catch(e) {{}} }};
 
-                let finalTranscript = '';
-
-                startBtn.onclick = () => {{
-                    try {{
-                        textarea.focus();
-                        recognition.start();
-                    }} catch(e) {{ }}
-                }};
-
-                recognition.onstart = () => {{
-                    statusText.innerText = "🎤 음성 인식 중...";
-                    statusText.style.color = "#e17055";
-                    startBtn.style.backgroundColor = "#ffeaa7";
-                    startBtn.style.color = "#222";
-                    startBtn.innerText = "👂 듣고 있어요";
-                }};
-
-                recognition.onresult = (event) => {{
-                    let interimTranscript = '';
-                    for (let i = event.resultIndex; i < event.results.length; ++i) {{
-                        if (event.results[i].isFinal) {{
-                            finalTranscript += event.results[i][0].transcript + ' ';
-                        }} else {{
-                            interimTranscript += event.results[i][0].transcript;
-                        }}
-                    }}
-                    textarea.value = finalTranscript + interimTranscript;
-                }};
-
-                recognition.onerror = () => {{
-                    statusText.innerText = "❌ 마이크 권한 확인 필요";
-                    statusText.style.color = "#ff7675";
-                    resetMic();
-                }};
-
-                recognition.onend = () => {{
-                    statusText.innerText = "✅ 음성변환 완료!";
-                    statusText.style.color = "#2ecc71";
-                    resetMic();
-                }};
-
-                function resetMic() {{
-                    startBtn.style.backgroundColor = "#ff7675";
-                    startBtn.style.color = "white";
-                    startBtn.innerText = "🔴 마이크 켜고 말하기";
-                    finalTranscript = textarea.value;
-                }}
-            }}
-
-            // 등록 버튼 클릭 시 데이터 안전 전송 가동
-            submitBtn.onclick = () => {{
-                const textValue = textarea.value.trim();
-                if (!textValue) {{
-                    alert("칭찬 내용을 입력하거나 말해 주세요!");
-                    return;
-                }}
-                
-                // 히든 인풋에 값을 담아 부모 창 전체를 타겟으로 HTML Form 제출 (CORS 보안 차단 우회 완료)
-                hiddenInput.value = textValue;
-                form.submit();
+            rec.onstart = () => {{
+                statusEl.innerText = "🎤 음성 인식 중...";
+                statusEl.style.color = "#e17055";
+                startBtn.innerText = "👂 듣고 있어요";
+                startBtn.style.background = "#ffeaa7";
+                startBtn.style.color = "#222";
             }};
+
+            rec.onresult = (e) => {{
+                let interim = '';
+                for (let i = e.resultIndex; i < e.results.length; i++) {{
+                    if (e.results[i].isFinal) final += e.results[i][0].transcript + ' ';
+                    else interim += e.results[i][0].transcript;
+                }}
+                // sessionStorage에 저장 → Streamlit text_area가 읽어감
+                window.parent.sessionStorage.setItem('voice_praise', final + interim);
+            }};
+
+            rec.onend = () => {{
+                statusEl.innerText = "✅ 음성변환 완료! 아래 입력창을 확인하세요.";
+                statusEl.style.color = "#2ecc71";
+                startBtn.innerText = "🔴 마이크 켜고 말하기";
+                startBtn.style.background = "#ff7675";
+                startBtn.style.color = "white";
+            }};
+
+            rec.onerror = () => {{
+                statusEl.innerText = "❌ 마이크 권한 확인 필요";
+                statusEl.style.color = "#ff7675";
+                startBtn.innerText = "🔴 마이크 켜고 말하기";
+                startBtn.style.background = "#ff7675";
+                startBtn.style.color = "white";
+            }};
+        }}
         </script>
         """
-        # 일체형 컴포넌트 출력
-        components.html(integrated_box_html, height=240)
+        components.html(voice_html, height=60)
 
-        # --- 🌻 모두가 남긴 칭찬들 리스트 노출 파트 ---
+        # ── 칭찬 입력창 + 등록 버튼 (순수 Streamlit) ─────────────────────────
+        praise_text = st.text_area(
+            f"✏️ {today_hero}에게 하고 싶은 말",
+            placeholder=f"{today_hero}에게 하고 싶은 말을 적거나, 마이크 버튼을 누르고 말해보세요...",
+            height=110,
+            key="praise_input"
+        )
+
+        if st.button("💌 이 칭찬 전하기 (등록)", use_container_width=True, type="primary"):
+            if praise_text and praise_text.strip():
+                st.session_state.praise_shower[today_key].append(
+                    (current_student, praise_text.strip())
+                )
+                st.success("🎉 칭찬이 등록되었습니다!")
+                st.rerun()
+            else:
+                st.warning("칭찬 내용을 입력하거나 말해 주세요!")
+
+        # ── 칭찬 목록 ────────────────────────────────────────────────────────
         st.markdown("---")
         st.subheader("모두가 남긴 칭찬들 🌻")
         all_praises = st.session_state.praise_shower[today_key]
-        
+
         if "editing_praise_idx" not in st.session_state:
             st.session_state.editing_praise_idx = None
         if "editing_praise_text" not in st.session_state:
@@ -535,27 +489,25 @@ elif menu == "오늘의 칭찬샤워":
             st.caption("아직 등록된 칭찬이 없습니다. 첫 번째 칭찬을 남겨보세요!")
         else:
             for idx, item in enumerate(all_praises):
-                if isinstance(item, tuple):
-                    writer, text = item
-                else:
-                    writer, text = "알 수 없음", item
-
+                writer, text = item if isinstance(item, tuple) else ("알 수 없음", item)
                 col1, col2 = st.columns([8, 1])
                 with col1:
                     if st.session_state.editing_praise_idx == idx:
-                        new_text = st.text_area(f"칭찬 수정 ({idx+1})", value=st.session_state.editing_praise_text, key=f"edit_{idx}")
-                        save = st.button("저장", key=f"save_{idx}")
-                        cancel = st.button("취소", key=f"cancel_{idx}")
-                        if save:
+                        new_text = st.text_area(
+                            f"칭찬 수정 ({idx+1})",
+                            value=st.session_state.editing_praise_text,
+                            key=f"edit_{idx}"
+                        )
+                        if st.button("저장", key=f"save_{idx}"):
                             if new_text.strip():
                                 st.session_state.praise_shower[today_key][idx] = (writer, new_text.strip())
                                 st.session_state.editing_praise_idx = None
                                 st.session_state.editing_praise_text = ""
-                                st.success("칭찬이 정상적으로 수정되었습니다!")
+                                st.success("칭찬이 수정되었습니다!")
                                 st.rerun()
                             else:
                                 st.warning("수정할 내용을 입력하세요.")
-                        if cancel:
+                        if st.button("취소", key=f"cancel_{idx}"):
                             st.session_state.editing_praise_idx = None
                             st.session_state.editing_praise_text = ""
                             st.rerun()
@@ -568,25 +520,16 @@ elif menu == "오늘의 칭찬샤워":
                             st.session_state.editing_praise_text = text
                             st.rerun()
 
-        # 엑셀(CSV) 다운로드 기능
+        # ── CSV 다운로드 ──────────────────────────────────────────────────────
         if all_praises:
-            export_writers = []
-            export_texts = []
-            for item in all_praises:
-                if isinstance(item, tuple):
-                    export_writers.append(item[0])
-                    export_texts.append(item[1])
-                else:
-                    export_writers.append("알 수 없음")
-                    export_texts.append(item)
-
+            rows = [(item[0], item[1]) if isinstance(item, tuple) else ("알 수 없음", item)
+                    for item in all_praises]
             praise_df = pd.DataFrame({
-                "주인공": [today_hero] * len(all_praises),
-                "날짜": [today_key] * len(all_praises),
-                "작성자": export_writers,
-                "칭찬": export_texts
+                "주인공": [today_hero] * len(rows),
+                "날짜":   [today_key]  * len(rows),
+                "작성자": [r[0] for r in rows],
+                "칭찬":   [r[1] for r in rows],
             })
-            
             csv = praise_df.to_csv(index=False).encode('utf-8-sig')
             st.write("")
             st.download_button(
@@ -596,3 +539,4 @@ elif menu == "오늘의 칭찬샤워":
                 mime='text/csv',
                 use_container_width=True
             )
+
