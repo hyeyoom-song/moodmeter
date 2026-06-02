@@ -148,9 +148,49 @@ if menu == "무드미터":
                 st.session_state.mood_data[selected_name][select_ym] = user_month_data
                 st.rerun()
 
-    # 감정 달력
-    st.subheader(f"{selected_name} 감정 달력 ({select_ym})")
-    first_weekday, num_days = calendar.monthrange(selected_year, selected_month)
+    # 감정 달력 - 월 이동 가능하도록 수정
+    st.subheader(f"{selected_name} 감정 달력")
+    
+    # 달력 표시용 년/월 상태 초기화
+    if "calendar_view_year" not in st.session_state:
+        st.session_state.calendar_view_year = selected_year
+    if "calendar_view_month" not in st.session_state:
+        st.session_state.calendar_view_month = selected_month
+
+    # 월 이동 버튼 및 월 표기
+    col_prev, col_title, col_next = st.columns([1, 3, 1])
+    with col_prev:
+        if st.button("◀", key="calendar_prev"):
+            if st.session_state.calendar_view_month == 1:
+                st.session_state.calendar_view_year -= 1
+                st.session_state.calendar_view_month = 12
+            else:
+                st.session_state.calendar_view_month -= 1
+            st.rerun()
+    with col_next:
+        if st.button("▶", key="calendar_next"):
+            if st.session_state.calendar_view_month == 12:
+                st.session_state.calendar_view_year += 1
+                st.session_state.calendar_view_month = 1
+            else:
+                st.session_state.calendar_view_month += 1
+            st.rerun()
+    with col_title:
+        st.markdown(
+            f"<div style='text-align:center; font-size:2.1em; font-weight:bold;'>"
+            f"{st.session_state.calendar_view_year}.{str(st.session_state.calendar_view_month).zfill(2)}</div>",
+            unsafe_allow_html=True
+        )
+
+    # 달력 표시용 년/월
+    cal_year = st.session_state.calendar_view_year
+    cal_month = st.session_state.calendar_view_month
+    cal_ym = f"{cal_year}-{str(cal_month).zfill(2)}"
+
+    # 달력에 표시할 데이터 가져오기
+    cal_month_data = st.session_state.mood_data[selected_name].setdefault(cal_ym, {})
+
+    first_weekday, num_days = calendar.monthrange(cal_year, cal_month)
     # monthrange는 월요일=0 기준이므로, 일요일을 첫 칸으로 두기 위해 보정
     sunday_first_weekday = (first_weekday + 1) % 7
 
@@ -166,7 +206,8 @@ if menu == "무드미터":
         day += 1
 
     week_labels = ['일', '월', '화', '수', '목', '금', '토']
-    this_is_today = (today.year == selected_year and today.month == selected_month)
+    this_is_today = (today.year == cal_year and today.month == cal_month)
+    selected_in_calendar = (selected_year == cal_year and selected_month == cal_month)
 
     cal_tbl = """
     <style>
@@ -186,16 +227,17 @@ if menu == "무드미터":
             d = days_grid[r][c]
             emoji_cell, label_cell, bgcolor = "", "", "#fafafa"
             is_today = (this_is_today and d == today.day)
+            is_selected = (selected_in_calendar and d == selected_day)
             if d is not None:
-                em_idx = user_month_data.get(int(d), None)
+                em_idx = cal_month_data.get(int(d), None)
                 if em_idx is not None:
                     emoji_cell = EMOTIONS[em_idx][1]
                     bgcolor = EMOTIONS[em_idx][2]
                     label_cell = EMOTIONS[em_idx][0]
                 cell_style = (
-                    f"background:{'#fffdeb' if is_today else bgcolor};"
+                    f"background:{'#fff8dc' if is_today else ('#fffacd' if is_selected else bgcolor)};"
                     "border:1px solid #e4e4e4; border-radius:8px; padding:2px;"
-                    + ("box-shadow:0 0 4px #FFD93D77;" if is_today else "")
+                    + ("box-shadow:0 0 4px #FFD93D77;" if (is_today or is_selected) else "")
                 )
                 cal_tbl += (
                     f"<td class='cal-tdx' style='{cell_style}'>"
