@@ -55,6 +55,7 @@ STUDENT_PINS = {
     "박민준": "3333",
     "최다은": "4444",
     "정하늘": "5555"
+    "선생님": "0000"
 }
 
 if not st.session_state.logged_in_student:
@@ -63,7 +64,7 @@ if not st.session_state.logged_in_student:
     
     col1, col2 = st.columns(2)
     with col1:
-        name = st.selectbox("이름 선택", STUDENT_LIST)
+        name = st.selectbox("이름 선택", STUDENT_LIST + ["선생님"])
     with col2:
         pin = st.text_input("PIN (4자리)", type="password", max_chars=4)
     
@@ -542,7 +543,7 @@ elif menu == "오늘의 칭찬샤워":
                             st.rerun()
 
         # ── CSV 다운로드 ───────────────────────────────────────────────────────
-        if all_praises:
+        if all_praises and st.session_state.logged_in_student == "선생님":
             rows = [(item[0], item[1]) if isinstance(item, tuple) else ("알 수 없음", item)
                     for item in all_praises]
             praise_df = pd.DataFrame({
