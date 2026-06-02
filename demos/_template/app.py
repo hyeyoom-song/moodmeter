@@ -88,7 +88,7 @@ if st.sidebar.button("로그아웃"):
 st.sidebar.title("메뉴")
 menu = st.sidebar.radio(
     "이동",
-    ["무드미터", "오늘의 주인공", "오늘의 칭찬샤워"],
+    ["🎨 무드미터", "🎁 오늘의 주인공", "💌 오늘의 칭찬샤워"],
     index=0,
     key="sidebar_menu"
 )
