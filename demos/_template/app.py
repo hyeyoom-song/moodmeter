@@ -491,7 +491,6 @@ elif menu == "오늘의 칭찬샤워":
                     (current_student, praise_text.strip())
                 )
                 # 입력창 초기화
-                st.session_state.praise_input = ""
                 st.success("🎉 칭찬이 등록되었습니다!")
                 st.rerun()
             else:
