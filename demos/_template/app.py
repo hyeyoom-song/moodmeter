@@ -367,9 +367,6 @@ elif menu == "오늘의 주인공":
         st.balloons()
 
 
-#############################################
-# 3. 오늘의 칭찬샤워 PAGE
-#############################################
 elif menu == "오늘의 칭찬샤워":
     st.title('학급 정서 기록🧡')
     st.header("오늘의 칭찬샤워 💌")
@@ -385,82 +382,105 @@ elif menu == "오늘의 칭찬샤워":
             st.session_state.praise_shower[today_key] = []
 
         st.markdown("### 🎤 목소리 또는 타자로 칭찬 남기기")
-        st.caption("타자를 쳐도 되고, [🔴 마이크 켜고 말하기]를 눌러 목소리로 입력한 뒤 등록할 수도 있어요!")
+        st.caption("마이크 버튼으로 말하면 자동으로 텍스트가 채워져요. 확인 후 등록 버튼을 누르세요!")
 
-        # ── 음성인식 버튼 (JS → sessionStorage에 저장) ──────────────────────
         import streamlit.components.v1 as components
 
+        # ── 음성인식 결과를 st.session_state로 넘기는 핵심 트릭 ──────────────
+        # JS → Python 브릿지: st.text_input을 숨겨서 사용
+        # 음성 결과는 JS가 직접 이 input의 DOM 값을 바꾸고
+        # 사용자가 등록 버튼(Streamlit 버튼)을 누르면 Python이 읽음
+
+        # 음성인식 전용 컴포넌트 (텍스트 채우기만 담당)
         voice_html = f"""
-        <div style="margin-bottom:8px;">
-            <button id="start-btn" type="button"
-                style="background:#ff7675;color:white;border:none;padding:10px 18px;
-                       font-size:14px;border-radius:20px;cursor:pointer;font-weight:bold;">
-                🔴 마이크 켜고 말하기
-            </button>
-            <span id="status" style="margin-left:12px;color:#2ecc71;font-size:13px;font-weight:bold;">
-                📝 직접 쓰거나 말해보세요.
-            </span>
+        <div style="font-family:sans-serif;padding:4px 0;">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <button id="mic-btn" type="button"
+                    style="background:#ff7675;color:white;border:none;padding:10px 18px;
+                           font-size:14px;border-radius:20px;cursor:pointer;font-weight:bold;">
+                    🔴 마이크 켜고 말하기
+                </button>
+                <span id="status-msg" style="color:#888;font-size:13px;font-weight:bold;">
+                    📝 말하면 아래 입력창에 자동으로 채워져요
+                </span>
+            </div>
         </div>
         <script>
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const startBtn = document.getElementById('start-btn');
-        const statusEl = document.getElementById('status');
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const micBtn = document.getElementById('mic-btn');
+        const statusMsg = document.getElementById('status-msg');
 
-        if (!SpeechRecognition) {{
-            statusEl.innerText = "❌ 크롬/웨일 브라우저가 필요해요.";
-            statusEl.style.color = "#ff7675";
-            startBtn.disabled = true;
-            startBtn.style.background = "#ccc";
+        if (!SR) {{
+            statusMsg.innerText = "❌ 크롬/웨일 브라우저를 사용해주세요.";
+            statusMsg.style.color = "#ff7675";
+            micBtn.disabled = true; micBtn.style.background = "#ccc";
         }} else {{
-            const rec = new SpeechRecognition();
+            const rec = new SR();
             rec.lang = 'ko-KR';
             rec.interimResults = true;
-            let final = '';
+            let finalText = '';
 
-            startBtn.onclick = () => {{ try {{ rec.start(); }} catch(e) {{}} }};
+            micBtn.onclick = () => {{
+                // Streamlit text_area의 실제 DOM 요소 찾기
+                // Streamlit은 label로 textarea를 연결하므로 placeholder로 찾음
+                finalText = '';
+                try {{ rec.start(); }} catch(e) {{}}
+            }};
 
             rec.onstart = () => {{
-                statusEl.innerText = "🎤 음성 인식 중...";
-                statusEl.style.color = "#e17055";
-                startBtn.innerText = "👂 듣고 있어요";
-                startBtn.style.background = "#ffeaa7";
-                startBtn.style.color = "#222";
+                statusMsg.innerText = "🎤 말하는 중...";
+                statusMsg.style.color = "#e17055";
+                micBtn.innerText = "👂 듣고 있어요";
+                micBtn.style.background = "#ffeaa7";
+                micBtn.style.color = "#333";
             }};
 
             rec.onresult = (e) => {{
                 let interim = '';
                 for (let i = e.resultIndex; i < e.results.length; i++) {{
-                    if (e.results[i].isFinal) final += e.results[i][0].transcript + ' ';
-                    else interim += e.results[i][0].transcript;
+                    if (e.results[i].isFinal) {{
+                        finalText += e.results[i][0].transcript;
+                    }} else {{
+                        interim = e.results[i][0].transcript;
+                    }}
                 }}
-                // sessionStorage에 저장 → Streamlit text_area가 읽어감
-                window.parent.sessionStorage.setItem('voice_praise', final + interim);
+                // 부모 창의 Streamlit textarea에 값 주입
+                const textareas = window.parent.document.querySelectorAll('textarea');
+                for (const ta of textareas) {{
+                    if (ta.placeholder && ta.placeholder.includes('{today_hero}')) {{
+                        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+                            window.parent.HTMLTextAreaElement.prototype, 'value').set;
+                        nativeInputValueSetter.call(ta, finalText + interim);
+                        ta.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                        break;
+                    }}
+                }}
             }};
 
             rec.onend = () => {{
-                statusEl.innerText = "✅ 음성변환 완료! 아래 입력창을 확인하세요.";
-                statusEl.style.color = "#2ecc71";
-                startBtn.innerText = "🔴 마이크 켜고 말하기";
-                startBtn.style.background = "#ff7675";
-                startBtn.style.color = "white";
+                statusMsg.innerText = "✅ 완료! 아래 내용을 확인 후 등록하세요.";
+                statusMsg.style.color = "#2ecc71";
+                micBtn.innerText = "🔴 마이크 켜고 말하기";
+                micBtn.style.background = "#ff7675";
+                micBtn.style.color = "white";
             }};
 
             rec.onerror = () => {{
-                statusEl.innerText = "❌ 마이크 권한 확인 필요";
-                statusEl.style.color = "#ff7675";
-                startBtn.innerText = "🔴 마이크 켜고 말하기";
-                startBtn.style.background = "#ff7675";
-                startBtn.style.color = "white";
+                statusMsg.innerText = "❌ 마이크 권한을 허용해주세요.";
+                statusMsg.style.color = "#ff7675";
+                micBtn.innerText = "🔴 마이크 켜고 말하기";
+                micBtn.style.background = "#ff7675";
+                micBtn.style.color = "white";
             }};
         }}
         </script>
         """
         components.html(voice_html, height=60)
 
-        # ── 칭찬 입력창 + 등록 버튼 (순수 Streamlit) ─────────────────────────
+        # ── Streamlit 네이티브 textarea (JS가 여기에 값을 주입) ──────────────
         praise_text = st.text_area(
             f"✏️ {today_hero}에게 하고 싶은 말",
-            placeholder=f"{today_hero}에게 하고 싶은 말을 적거나, 마이크 버튼을 누르고 말해보세요...",
+            placeholder=f"{today_hero}에게 칭찬을 남겨주세요...",
             height=110,
             key="praise_input"
         )
@@ -470,12 +490,14 @@ elif menu == "오늘의 칭찬샤워":
                 st.session_state.praise_shower[today_key].append(
                     (current_student, praise_text.strip())
                 )
+                # 입력창 초기화
+                st.session_state.praise_input = ""
                 st.success("🎉 칭찬이 등록되었습니다!")
                 st.rerun()
             else:
                 st.warning("칭찬 내용을 입력하거나 말해 주세요!")
 
-        # ── 칭찬 목록 ────────────────────────────────────────────────────────
+        # ── 칭찬 목록 ─────────────────────────────────────────────────────────
         st.markdown("---")
         st.subheader("모두가 남긴 칭찬들 🌻")
         all_praises = st.session_state.praise_shower[today_key]
@@ -520,7 +542,7 @@ elif menu == "오늘의 칭찬샤워":
                             st.session_state.editing_praise_text = text
                             st.rerun()
 
-        # ── CSV 다운로드 ──────────────────────────────────────────────────────
+        # ── CSV 다운로드 ───────────────────────────────────────────────────────
         if all_praises:
             rows = [(item[0], item[1]) if isinstance(item, tuple) else ("알 수 없음", item)
                     for item in all_praises]
@@ -539,4 +561,3 @@ elif menu == "오늘의 칭찬샤워":
                 mime='text/csv',
                 use_container_width=True
             )
-
