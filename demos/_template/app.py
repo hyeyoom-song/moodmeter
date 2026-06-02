@@ -282,6 +282,10 @@ elif menu == "오늘의 주인공":
 
     # 오늘 이미 뽑혔으면 고정
     today_hero = st.session_state.hero_pick_history.get(today_key, None)
+    hero_revealed = st.session_state.hero_revealed.get(today_key, False)
+
+if not today_hero or not hero_revealed:
+    st.warning("아직 오늘의 주인공이 공개되지 않았습니다! '오늘의 주인공' 탭에서 선물 상자를 열어주세요. 🎁")
 
     # 학생별 세션 상태 초기화
     if current_student not in st.session_state.student_gift_opening:
