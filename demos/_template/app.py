@@ -33,6 +33,9 @@ if 'hero_pick_history' not in st.session_state:
 if 'praise_shower' not in st.session_state:
     # {yyyy-mm-dd: [칭찬글]}
     st.session_state.praise_shower = {}
+if 'student_gift_opening' not in st.session_state:
+    # 학생별 선물상자 열림 상태 {학생이름: True/False}
+    st.session_state.student_gift_opening = {}
 
 # 오늘, 이번달, 어제
 today = date.today()
@@ -269,6 +272,8 @@ elif menu == "오늘의 주인공":
     st.title('학급 정서 기록🧡')
     st.header("오늘의 주인공 🎁")
 
+    current_student = st.session_state.logged_in_student
+    
     # 어제 뽑힌 학생은 오늘 룰렛 대상에서 제외
     exclude_name = st.session_state.hero_pick_history.get(yesterday_key, None)
     available_names = [name for name in STUDENT_LIST if name != exclude_name]
@@ -276,11 +281,9 @@ elif menu == "오늘의 주인공":
     # 오늘 이미 뽑혔으면 고정
     today_hero = st.session_state.hero_pick_history.get(today_key, None)
 
-    # 선물 상자 상태 관리
-    if "gift_box_opened" not in st.session_state:
-        st.session_state.gift_box_opened = False
-    if "gift_opening_animation" not in st.session_state:
-        st.session_state.gift_opening_animation = False
+    # 학생별 선물상자 열림 상태 초기화
+    if current_student not in st.session_state.student_gift_opening:
+        st.session_state.student_gift_opening[current_student] = False
 
     if today_hero:
         # 이미 주인공이 정해진 경우
@@ -296,7 +299,7 @@ elif menu == "오늘의 주인공":
         st.balloons()
     else:
         # 아직 선택되지 않은 경우
-        if not st.session_state.gift_opening_animation:
+        if not st.session_state.student_gift_opening[current_student]:
             # 선물 상자 표시
             st.markdown(
                 """
@@ -314,7 +317,7 @@ elif menu == "오늘의 주인공":
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
                 if st.button("🎁 열기", key="open_gift", use_container_width=True):
-                    st.session_state.gift_opening_animation = True
+                    st.session_state.student_gift_opening[current_student] = True
                     st.rerun()
         else:
             # 열리는 애니메이션 및 결과 표시
@@ -343,11 +346,11 @@ elif menu == "오늘의 주인공":
             if len(available_names) > 0:
                 winner = random.choice(available_names)
                 st.session_state.hero_pick_history[today_key] = winner
-                st.session_state.gift_opening_animation = False
+                st.session_state.student_gift_opening[current_student] = False
                 st.rerun()
             else:
                 st.error("선택할 학생이 없습니다!")
-                st.session_state.gift_opening_animation = False
+                st.session_state.student_gift_opening[current_student] = False
 
 
 #############################################
@@ -422,6 +425,6 @@ elif menu == "오늘의 칭찬샤워":
             st.download_button(
                 "칭찬샤워 엑셀로 다운로드",
                 data=csv,
-                file_name=f"praise_{today_day}.csv",
+                file_name=f"praise_{today_key}.csv",
                 mime='text/csv'
             )
