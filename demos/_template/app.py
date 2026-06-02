@@ -368,7 +368,7 @@ elif menu == "오늘의 주인공":
 
 
 #############################################
-# 3. 오늘의 칭찬샤워 PAGE (수정됨)
+# 3. 오늘의 칭찬샤워 PAGE (음성 인식 기능 추가)
 #############################################
 elif menu == "오늘의 칭찬샤워":
     st.title('학급 정서 기록🧡')
@@ -384,10 +384,78 @@ elif menu == "오늘의 칭찬샤워":
         if today_key not in st.session_state.praise_shower:
             st.session_state.praise_shower[today_key] = []
 
-        praise_text = st.text_area(f"{today_hero}에게 칭찬 한마디 남기기!", key="praise_text")
+        # --- 🎤 [신규] 브라우저 내장 Web Speech API 활용 음성 인식기 ---
+        st.markdown("### 🎤 목소리로 칭찬 남기기 (저학년용)")
+        st.caption("아래 '마이크 켜기' 버튼을 누르고 마이크 권한을 허용한 뒤, 컴퓨터나 스마트폰에 대고 말해보세요!")
+
+        # JavaScript와 Streamlit 간의 값 전달을 위한 컴포넌트 우회 방식 (HTML 렌더링)
+        # 웹 브라우저 기능을 사용해 텍스트를 인식하고 받아옵니다.
+        import streamlit.components.v1 as components
+
+        st_stt_html = """
+        <div style="background: #f1f2f6; padding: 15px; border-radius: 10px; text-align: center;">
+            <button id="start-btn" style="background-color: #ff7675; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                🔴 마이크 켜고 말하기
+            </button>
+            <p id="status" style="color: #666; margin-top: 10px; font-size: 14px;">버튼을 누르면 음성 인식이 시작됩니다.</p>
+            <div id="result-box" style="margin-top: 10px; padding: 10px; background: white; border: 1px solid #ddd; min-height: 40px; border-radius: 5px; font-size: 15px; text-align: left; color: #222;"></div>
+        </div>
+
+        <script>
+            const startBtn = document.getElementById('start-btn');
+            const statusText = document.getElementById('status');
+            const resultBox = document.getElementById('result-box');
+
+            // 브라우저 음성인식 객체 지원 확인
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (!SpeechRecognition) {
+                statusText.innerText = "❌ 이 브라우저는 음성 인식을 지원하지 않습니다. (크롬이나 웨일을 사용해 주세요)";
+                startBtn.disabled = true;
+            } else {
+                const recognition = new SpeechRecognition();
+                recognition.lang = 'ko-KR'; // 한국어 설정
+                recognition.interimResults = false;
+                recognition.maxAlternatives = 1;
+
+                startBtn.onclick = () => {
+                    recognition.start();
+                    statusText.innerText = "🎤 듣고 있어요... 말씀하세요! (다 하시면 잠시 기다려주세요)";
+                    startBtn.style.backgroundColor = "#ffeaa7";
+                    startBtn.style.color = "#222";
+                };
+
+                recognition.onresult = (event) => {
+                    const speechToText = event.results[0][0].transcript;
+                    resultBox.innerText = speechToText;
+                    statusText.innerText = "✅ 인식 완료! 아래 입력창에 복사(Ctrl+C)해서 사용하거나 참고하여 작성하세요.";
+                    startBtn.style.backgroundColor = "#ff7675";
+                    startBtn.style.color = white;
+                    
+                    // Streamlit 텍스트 창으로 직접 값을 보내기 어렵기 때문에, 클립보드에 자동 복사 기능 제공
+                    navigator.clipboard.writeText(speechToText);
+                    alert("📢 말한 내용이 자동으로 복사되었습니다! 아래 칭찬 칸에 '붙여넣기(마우스 우클릭 -> 붙여넣기)' 해주세요.");
+                };
+
+                recognition.onerror = (event) => {
+                    statusText.innerText = "❌ 에러 발생: " + event.error + " (마이크 권한을 확인해주세요)";
+                    startBtn.style.backgroundColor = "#ff7675";
+                };
+
+                recognition.onspeechend = () => {
+                    recognition.stop();
+                };
+            }
+        </script>
+        """
+        # HTML 컴포넌트 화면에 띄우기
+        components.html(st_stt_html, height=180)
+        # -----------------------------------------------------
+
+        # 칭찬 입력창 및 수동 등록 기능 (음성으로 인식된 문장을 여기에 붙여넣기 하도록 유도)
+        praise_text = st.text_area(f"{today_hero}에게 칭찬 한마디 남기기! (음성 인식된 내용을 여기에 붙여넣거나 직접 치세요)", key="praise_text")
         if st.button("칭찬 남기기"):
             if praise_text.strip():
-                # 📢 [수정] 칭찬을 저장할 때 (작성자 이름, 칭찬내용) 튜플 형태로 보관합니다.
                 st.session_state.praise_shower[today_key].append((current_student, praise_text.strip()))
                 st.success("칭찬이 정상적으로 등록되었습니다!")
                 st.rerun()
@@ -403,7 +471,6 @@ elif menu == "오늘의 칭찬샤워":
 
         # 화면 리스트 출력 및 수정 로직
         for idx, item in enumerate(all_praises):
-            # 이전 버전 데이터(텍스트만 있는 경우)와 호환성 유지용 방어 코드
             if isinstance(item, tuple):
                 writer, text = item
             else:
@@ -417,7 +484,6 @@ elif menu == "오늘의 칭찬샤워":
                     cancel = st.button("취소", key=f"cancel_{idx}")
                     if save:
                         if new_text.strip():
-                            # 📢 [수정] 수정할 때도 원래 작성자 이름(writer)을 유지하며 업데이트합니다.
                             st.session_state.praise_shower[today_key][idx] = (writer, new_text.strip())
                             st.session_state.editing_praise_idx = None
                             st.session_state.editing_praise_text = ""
@@ -440,7 +506,6 @@ elif menu == "오늘의 칭찬샤워":
 
         # 엑셀(CSV) 다운로드 데이터프레임 빌드 파트
         if all_praises:
-            # 다운로드할 데이터를 분리해 리스트화
             export_writers = []
             export_texts = []
             for item in all_praises:
@@ -451,7 +516,6 @@ elif menu == "오늘의 칭찬샤워":
                     export_writers.append("알 수 없음")
                     export_texts.append(item)
 
-            # 📢 [수정] 데이터프레임에 "작성자" 열을 새로 배치했습니다.
             praise_df = pd.DataFrame({
                 "주인공": [today_hero] * len(all_praises),
                 "날짜": [today_key] * len(all_praises),
@@ -466,3 +530,4 @@ elif menu == "오늘의 칭찬샤워":
                 file_name=f"praise_{today_key}.csv",
                 mime='text/csv'
             )
+
