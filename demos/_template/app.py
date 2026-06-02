@@ -267,8 +267,6 @@ if menu == "무드미터":
     cal_tbl += "</table>"
     st.markdown(cal_tbl, unsafe_allow_html=True)
 
-
-
 #############################################
 # 2. 오늘의 주인공 PAGE
 #############################################
@@ -282,9 +280,9 @@ elif menu == "오늘의 주인공":
     exclude_name = st.session_state.hero_pick_history.get(yesterday_key, None)
     available_names = [name for name in STUDENT_LIST if name != exclude_name]
 
-    # 오늘 이미 뽑혔는지, 공개됐는지 확인
+    # 오늘 주인공 및 내가 열었는지 여부 확인 (학생별)
     today_hero = st.session_state.hero_pick_history.get(today_key, None)
-    hero_revealed = st.session_state.hero_revealed.get(today_key, False)
+    hero_revealed = st.session_state.hero_revealed.get(current_student, {}).get(today_key, False)
 
     # 학생별 세션 상태 초기화
     if current_student not in st.session_state.student_gift_opening:
@@ -293,7 +291,7 @@ elif menu == "오늘의 주인공":
         st.session_state.student_gift_viewed[current_student] = False
 
     if hero_revealed and today_hero:
-        # 상황 1: 이미 공개된 경우 → 결과만 표시
+        # 상황 1: 내가 이미 선물 상자를 열어본 경우 → 결과만 표시
         st.markdown(
             """
             <div style='text-align:center; margin: 40px 0;'>
@@ -304,61 +302,64 @@ elif menu == "오늘의 주인공":
             unsafe_allow_html=True
         )
 
+    elif not st.session_state.student_gift_opening[current_student]:
+        # 상황 2: 아직 버튼을 누르지 않은 경우 → 선물 상자 표시
+        st.markdown(
+            """
+            <div style='text-align:center; margin: 80px 0;'>
+                <div style='font-size:120px; display:inline-block;'>🎁</div>
+                <div style='font-size:24px; color:#666; margin-top:60px; font-weight:bold;'>오늘의 주인공을 확인하세요!</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        col1, col2, col3 = st.columns([0.5, 2, 0.5])
+        with col2:
+            if st.button("🎁 오늘의 주인공 확인", key="open_gift", use_container_width=True):
+                st.session_state.student_gift_opening[current_student] = True
+                st.rerun()
+
     else:
-        # 상황 2: 아직 공개 전
-        if not st.session_state.student_gift_opening[current_student]:
-            # 선물 상자 버튼 표시
+        # 상황 3: 버튼을 눌러서 처음으로 공개하는 과정 (북소리)
+        placeholder = st.empty()
+        with placeholder.container():
             st.markdown(
                 """
-                <div style='text-align:center; margin: 80px 0;'>
-                    <div style='font-size:120px; display:inline-block;'>🎁</div>
-                    <div style='font-size:24px; color:#666; margin-top:60px; font-weight:bold;'>오늘의 주인공을 확인하세요!</div>
+                <div style='text-align:center; margin: 60px 0;'>
+                    <div style='font-size:200px; margin-bottom:20px;'>🥁</div>
+                    <div style='font-size:32px; font-weight:bold; color:#e17055;'>
+                        두구두구두구두구….
+                    </div>
                 </div>
                 """,
                 unsafe_allow_html=True
             )
-            col1, col2, col3 = st.columns([0.5, 2, 0.5])
-            with col2:
-                if st.button("🎁 오늘의 주인공 확인", key="open_gift", use_container_width=True):
-                    st.session_state.student_gift_opening[current_student] = True
-                    st.rerun()
+        time.sleep(1)
+        placeholder.empty()
 
-        else:
-            # 상황 3: 버튼을 눌러서 처음으로 공개하는 과정 (북소리)
-            placeholder = st.empty()
-            with placeholder.container():
-                st.markdown(
-                    """
-                    <div style='text-align:center; margin: 60px 0;'>
-                        <div style='font-size:200px; margin-bottom:20px;'>🥁</div>
-                        <div style='font-size:32px; font-weight:bold; color:#e17055;'>
-                            두구두구두구두구….
-                        </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-            time.sleep(1)
-            placeholder.empty()
+        # 주인공 결정 (아직 안 뽑혔으면 뽑기)
+        if not today_hero:
+            if len(available_names) > 0:
+                today_hero = random.choice(available_names)
+                st.session_state.hero_pick_history[today_key] = today_hero
+            else:
+                st.error("선택할 학생이 없습니다!")
+                st.session_state.student_gift_opening[current_student] = False
+                st.stop()
 
-            # 주인공 결정
-            if not today_hero:
-                if len(available_names) > 0:
-                    today_hero = random.choice(available_names)
-                    st.session_state.hero_pick_history[today_key] = today_hero
-                else:
-                    st.error("선택할 학생이 없습니다!")
-                    st.session_state.student_gift_opening[current_student] = False
-                    st.stop()
+        # 내 공개 완료 상태를 학생별로 저장 후 rerun → 상황 1로 이동
+        if current_student not in st.session_state.hero_revealed:
+            st.session_state.hero_revealed[current_student] = {}
+        st.session_state.hero_revealed[current_student][today_key] = True
+        st.session_state.student_gift_viewed[current_student] = True
+        st.rerun()
 
-            # 공개 완료 상태 저장 후 rerun → 상황 1로 이동
-            st.session_state.student_gift_viewed[current_student] = True
-            st.session_state.hero_revealed[today_key] = True
-            st.rerun()
+
 
 #############################################
 # 3. 오늘의 칭찬샤워 PAGE
 #############################################
+
 elif menu == "오늘의 칭찬샤워":
     st.title('학급 정서 기록🧡')
     st.header("오늘의 칭찬샤워 💌")
@@ -552,3 +553,5 @@ elif menu == "오늘의 칭찬샤워":
                 mime='text/csv',
                 use_container_width=True
             )
+
+
