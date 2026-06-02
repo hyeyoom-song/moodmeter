@@ -231,13 +231,23 @@ if menu == "무드미터":
             if d is not None:
                 em_idx = cal_month_data.get(int(d), None)
                 if em_idx is not None:
-                    emoji_cell = EMOTIONS[em_idx][1]
+                    # EMOTIONS에서 직접 색상 가져오기
                     bgcolor = EMOTIONS[em_idx][2]
+                    emoji_cell = EMOTIONS[em_idx][1]
                     label_cell = EMOTIONS[em_idx][0]
+                
+                # 배경색 결정: 오늘이거나 선택된 날짜일 경우 다른 처리
+                if is_today or is_selected:
+                    final_bgcolor = bgcolor
+                    shadow = "box-shadow:inset 0 0 0 3px #FFD93D;"
+                else:
+                    final_bgcolor = bgcolor
+                    shadow = ""
+                
                 cell_style = (
-                    f"background:{'#fff8dc' if is_today else ('#fffacd' if is_selected else bgcolor)};"
+                    f"background:{final_bgcolor};"
                     "border:1px solid #e4e4e4; border-radius:8px; padding:4px;"
-                    + ("box-shadow:0 0 4px #FFD93D77;" if (is_today or is_selected) else "")
+                    + shadow
                 )
                 cal_tbl += (
                     f"<td class='cal-tdx' style='{cell_style}'>"
