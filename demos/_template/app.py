@@ -282,71 +282,59 @@ elif menu == "오늘의 주인공":
     if "gift_opening_animation" not in st.session_state:
         st.session_state.gift_opening_animation = False
 
-    # 선물 상자 표시
-    gift_placeholder = st.empty()
-
     if today_hero:
         # 이미 주인공이 정해진 경우
-        with gift_placeholder.container():
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col2:
-                st.markdown(
-                    """
-                    <div style='text-align:center;'>
-                        <div style='font-size:120px;'>🎁</div>
-                        <div style='font-size:14px; color:#999;'>이미 선택되었습니다</div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-            st.info(f"✨ 오늘의 주인공: **{today_hero}**")
-            st.balloons()
+        st.markdown(
+            """
+            <div style='text-align:center; margin: 40px 0;'>
+                <div style='font-size:180px; margin-bottom:20px;'>🎉</div>
+                <div style='font-size:48px; font-weight:bold; color:#e17055; margin-bottom:30px;'>{}</div>
+            </div>
+            """.format(today_hero),
+            unsafe_allow_html=True
+        )
+        st.balloons()
     else:
         # 아직 선택되지 않은 경우
         if not st.session_state.gift_opening_animation:
             # 선물 상자 표시
-            with gift_placeholder.container():
-                col1, col2, col3 = st.columns([1, 2, 1])
-                with col2:
-                    st.markdown(
-                        """
-                        <div style='text-align:center;'>
-                            <div style='font-size:150px; cursor:pointer; transition:transform 0.1s;'>🎁</div>
-                            <div style='font-size:16px; color:#666; margin-top:20px;'>클릭하면 주인공이 나타나요!</div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
+            st.markdown(
+                """
+                <div style='text-align:center; margin: 60px 0;'>
+                    <div style='font-size:480px; cursor:pointer; transition:transform 0.1s; display:inline-block;' id='giftbox' onclick='this.style.transform="scale(0.95)"; setTimeout(() => this.style.transform="scale(1)", 100);'>
+                        🎁
+                    </div>
+                    <div style='font-size:18px; color:#666; margin-top:40px; font-weight:bold;'>선물상자를 클릭하세요!</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
             # 선물 상자 클릭 버튼
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
-                if st.button("🎁 선물을 열어보세요!", key="open_gift", use_container_width=True):
+                if st.button("🎁 열기", key="open_gift", use_container_width=True):
                     st.session_state.gift_opening_animation = True
                     st.rerun()
         else:
             # 열리는 애니메이션 및 결과 표시
-            with gift_placeholder.container():
-                col1, col2, col3 = st.columns([1, 2, 1])
-                with col2:
-                    # 북소리 효과 시뮬레이션
-                    st.markdown(
-                        """
-                        <div style='text-align:center;'>
-                            <div style='font-size:100px; margin-bottom:20px;'>🥁</div>
-                            <div style='font-size:24px; font-weight:bold; color:#e17055; animation: pulse 0.5s infinite;'>
-                                두둠... 두둠... 두둠...
-                            </div>
-                            <style>
-                                @keyframes pulse {
-                                    0%, 100% { opacity: 1; }
-                                    50% { opacity: 0.5; }
-                                }
-                            </style>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
+            st.markdown(
+                """
+                <div style='text-align:center; margin: 60px 0;'>
+                    <div style='font-size:300px; margin-bottom:20px;'>🥁</div>
+                    <div style='font-size:32px; font-weight:bold; color:#e17055; animation: pulse 0.5s infinite;'>
+                        두둠... 두둠... 두둠...
+                    </div>
+                    <style>
+                        @keyframes pulse {
+                            0%, 100% { opacity: 1; }
+                            50% { opacity: 0.5; }
+                        }
+                    </style>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
             
             # 2초 대기 (북소리 효과)
             time.sleep(2)
@@ -434,6 +422,6 @@ elif menu == "오늘의 칭찬샤워":
             st.download_button(
                 "칭찬샤워 엑셀로 다운로드",
                 data=csv,
-                file_name=f"praise_{today_key}.csv",
+                file_name=f"praise_{today_day}.csv",
                 mime='text/csv'
             )
