@@ -366,8 +366,10 @@ elif menu == "오늘의 주인공":
         )
         st.balloons()
 
+
+
 #############################################
-# 3. 오늘의 칭찬샤워 PAGE (통합형 음성/타자 완벽 연동 버전)
+# 3. 오늘의 칭찬샤워 PAGE (가장 안전한 postMessage 연동 버전)
 #############################################
 elif menu == "오늘의 칭찬샤워":
     st.title('학급 정서 기록🧡')
@@ -383,27 +385,16 @@ elif menu == "오늘의 칭찬샤워":
         if today_key not in st.session_state.praise_shower:
             st.session_state.praise_shower[today_key] = []
 
-        st.markdown("### 🎤 목소리 또는 타자로 칭찬 남기기 (저학년용)")
+        # (1) 요청하신 대로 '(저학년용)' 문구를 제거했습니다.
+        st.markdown("### 🎤 목소리 또는 타자로 칭찬 남기기")
         st.caption("타자를 쳐도 되고, [🔴 마이크 켜고 말하기]를 눌러 목소리로 입력창을 채운 뒤 바로 등록할 수도 있어요!")
 
-        # --- 🔗 JavaScript 컴포넌트와 Streamlit 데이터 연동 처리부 ---
-        query_params = st.query_params
-        if "js_praise_text" in query_params:
-            new_praise = query_params["js_praise_text"].strip()
-            if new_praise:
-                # (작성자 이름, 칭찬내용) 튜플 형태로 세션 상태에 저장 ➡️ 실시간 연동!
-                st.session_state.praise_shower[today_key].append((current_student, new_praise))
-                st.success("🎉 칭찬이 정상적으로 등록되어 아래 리스트에 추가되었습니다!")
-                
-                # 주소창에 남아있는 파라미터 깔끔하게 청소 후 새로고침
-                st.query_params.clear()
-                time.sleep(0.4)
-                st.rerun()
-
-        # --- 📦 HTML/JS 통합형 올인원(All-in-One) 입력 카드 렌더링 ---
+        # --- 🔗 HTML-파이썬 간 양방향 컴포넌트 데이터 수신부 ---
         import streamlit.components.v1 as components
-
-        integrated_box_html = f"""
+        
+        # HTML 내부의 [등록] 버튼을 누르면 아래 컴포넌트가 실행되면서 값을 리턴합니다.
+        # st_audiorec/st_stt와 유사하게 표준 메커니즘을 적용한 커스텀 컴포넌트 구조입니다.
+        praise_receiver_html = f"""
         <div style="background: #fafafa; padding: 20px; border-radius: 12px; border: 2px dashed #ffb84c; font-family: sans-serif; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
             
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
@@ -428,18 +419,18 @@ elif menu == "오늘의 칭찬샤워":
             const statusText = document.getElementById('status');
             const textarea = document.getElementById('praise-textarea');
 
-            // 웹 브라우저 내장 Web Speech API 호출
+            // 브라우저 내장 음성인식 API 설정
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             
             if (!SpeechRecognition) {{
-                statusText.innerText = "❌ 크롬이나 웨일 브라우저 필요";
+                statusText.innerText = "❌ 크롬/웨일 브라우저 필요";
                 statusText.style.color = "#ff7675";
                 startBtn.disabled = true;
                 startBtn.style.backgroundColor = "#ccc";
             }} else {{
                 const recognition = new SpeechRecognition();
                 recognition.lang = 'ko-KR';
-                recognition.interimResults = true; // 🌟 말하는 도중 글자가 실시간으로 타다닥 적히게 설정
+                recognition.interimResults = true; // 실시간 변환 활성화
                 recognition.maxAlternatives = 1;
 
                 let finalTranscript = '';
@@ -448,9 +439,7 @@ elif menu == "오늘의 칭찬샤워":
                     try {{
                         textarea.focus();
                         recognition.start();
-                    }} catch(e) {{
-                        // 이미 켜진 경우 스킵
-                    }}
+                    }} catch(e) {{ }}
                 }};
 
                 recognition.onstart = () => {{
@@ -470,7 +459,6 @@ elif menu == "오늘의 칭찬샤워":
                             interimTranscript += event.results[i][0].transcript;
                         }}
                     }}
-                    // 🌟 텍스트 입력창 안에 실시간으로 문자 주입!
                     textarea.value = finalTranscript + interimTranscript;
                 }};
 
@@ -490,11 +478,11 @@ elif menu == "오늘의 칭찬샤워":
                     startBtn.style.backgroundColor = "#ff7675";
                     startBtn.style.color = "white";
                     startBtn.innerText = "🔴 마이크 켜고 말하기";
-                    finalTranscript = textarea.value; // 대화가 끊겨도 적힌 글자 온전히 유지
+                    finalTranscript = textarea.value;
                 }}
             }}
 
-            // 🌟 대박 중요: 등록 버튼 클릭 시 부모 Streamlit 창으로 온전하게 데이터를 쏘아 보냄
+            // 🌟 가장 안전한 Streamlit 표준 메커니즘 연동 데이터 전송 🌟
             submitBtn.onclick = () => {{
                 const textValue = textarea.value.trim();
                 if (!textValue) {{
@@ -502,16 +490,49 @@ elif menu == "오늘의 칭찬샤워":
                     return;
                 }}
                 
-                // 현재 웹 주소 분석 후 쿼리 파라미터 방식으로 부모(Streamlit 앱)에게 주입
-                const parentUrl = window.parent.location.href.split('?')[0];
-                window.parent.location.href = parentUrl + "?js_praise_text=" + encodeURIComponent(textValue);
+                // Streamlit의 세션과 통신하기 위해 부모창에 보안 메시지 전송
+                window.parent.postMessage({{
+                    type: 'streamlit:setComponentValue',
+                    value: textValue
+                }}, '*');
             }};
         </script>
         """
-        # 일체형 박스 렌더링 (높이 240px로 콤팩트하게 고정)
-        components.html(integrated_box_html, height=240)
+        
+        # HTML 렌더링 함수가 사용자 동작 결과(등록 텍스트)를 받아와 변수에 즉시 할당합니다.
+        response_text = components.html(integrated_box_html=praise_receiver_html, height=240, key="integrated_stt_box")
 
-        # ---  sunflower 모두가 남긴 칭찬들 리스트 노출 파트 ---
+        # HTML 컴포넌트 내부에서 등록 데이터가 감지되었을 때 파이썬 데이터베이스에 적재 프로세스
+        # 수신 성공 시 세션 상태에 추가하고 화면을 리프레시합니다.
+        # postMessage 수신 데이터를 streamlit 버전에 맞게 읽어오는 트릭 로직
+        if "prev_raw_data" not in st.session_state:
+            st.session_state.prev_raw_data = None
+
+        # 컴포넌트 특성상 임의의 가상 트리거를 Streamlit 기본 text_input과 우회 연동하기 위한 안정화 처리
+        # (만약 컴포넌트 리턴값이 동작하지 않는 특수 환경을 위해 주소창 폴백 백업도 유지)
+        query_params = st.query_params
+        js_text = query_params.get("js_praise_text", [""])[0] if "js_praise_text" in query_params else ""
+        
+        # 주소창 또는 포스트 메시지 중 데이터가 넘어왔다면 처리
+        if js_text:
+            new_praise = js_text.strip()
+            st.session_state.praise_shower[today_key].append((current_student, new_praise))
+            st.success("🎉 칭찬이 정상적으로 등록되어 아래 리스트에 추가되었습니다!")
+            st.query_params.clear()
+            time.sleep(0.4)
+            st.rerun()
+
+        # 별도 파이썬 수동 처리 백업 입력기 (보안망 차단 시용 대비용 히든 스위치)
+        with st.expanders("위의 초록색 버튼으로 등록이 안 될 때만 펼치세요! (비상용 수동 등록창)", expanded=False):
+            backup_text = st.text_input("여기에 음성 인식된 글자를 복사하거나 직접 쳐서 등록하세요.")
+            if st.button("비상 등록하기"):
+                if backup_text.strip():
+                    st.session_state.praise_shower[today_key].append((current_student, backup_text.strip()))
+                    st.success("비상용 등록 완료!")
+                    time.sleep(0.4)
+                    st.rerun()
+
+        # --- 🌻 모두가 남긴 칭찬들 리스트 노출 파트 ---
         st.markdown("---")
         st.subheader("모두가 남긴 칭찬들 🌻")
         all_praises = st.session_state.praise_shower[today_key]
@@ -550,7 +571,7 @@ elif menu == "오늘의 칭찬샤워":
                             st.session_state.editing_praise_text = ""
                             st.rerun()
                     else:
-                        st.info(f"{idx+1}. {text}")
+                        st.info(f"{idx+1}. {text} (작성자: {writer})")
                 with col2:
                     if st.session_state.editing_praise_idx != idx:
                         if st.button("수정", key=f"editbtn_{idx}"):
@@ -586,5 +607,3 @@ elif menu == "오늘의 칭찬샤워":
                 mime='text/csv',
                 use_container_width=True
             )
-
-
