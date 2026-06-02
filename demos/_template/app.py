@@ -157,10 +157,10 @@ if menu == "무드미터":
     if "calendar_view_month" not in st.session_state:
         st.session_state.calendar_view_month = selected_month
 
-    # 월 이동 버튼 및 월 표기
-    col_prev, col_title, col_next = st.columns([1, 3, 1])
+    # 월 이동 버튼 및 월 표기 - 동일 너비로 조정
+    col_prev, col_title, col_next = st.columns([0.5, 2, 0.5])
     with col_prev:
-        if st.button("◀", key="calendar_prev"):
+        if st.button("◀", key="calendar_prev", use_container_width=True):
             if st.session_state.calendar_view_month == 1:
                 st.session_state.calendar_view_year -= 1
                 st.session_state.calendar_view_month = 12
@@ -168,7 +168,7 @@ if menu == "무드미터":
                 st.session_state.calendar_view_month -= 1
             st.rerun()
     with col_next:
-        if st.button("▶", key="calendar_next"):
+        if st.button("▶", key="calendar_next", use_container_width=True):
             if st.session_state.calendar_view_month == 12:
                 st.session_state.calendar_view_year += 1
                 st.session_state.calendar_view_month = 1
@@ -211,11 +211,11 @@ if menu == "무드미터":
 
     cal_tbl = """
     <style>
-    .cal-tdx {min-width:38px;min-height:34px;text-align:center;font-size:0.98em; border-radius:8px; padding:2px;}
+    .cal-tdx {min-width:48px;min-height:48px;text-align:center;font-size:0.98em; border-radius:8px; padding:4px;}
     .cal-emoji {font-size:1.13em;}
     .cal-label {font-size:0.78em;}
     </style>
-    <table style='border-collapse:collapse;'>
+    <table style='border-collapse:collapse;width:100%;'>
     <tr>""" + "".join(
         f"<th style='padding:5px 0 5px 0;border-bottom:1.4px solid #aaa;color:#222;font-weight:bold;font-size:0.98em;'>{w}</th>"
         for w in week_labels
@@ -236,7 +236,7 @@ if menu == "무드미터":
                     label_cell = EMOTIONS[em_idx][0]
                 cell_style = (
                     f"background:{'#fff8dc' if is_today else ('#fffacd' if is_selected else bgcolor)};"
-                    "border:1px solid #e4e4e4; border-radius:8px; padding:2px;"
+                    "border:1px solid #e4e4e4; border-radius:8px; padding:4px;"
                     + ("box-shadow:0 0 4px #FFD93D77;" if (is_today or is_selected) else "")
                 )
                 cal_tbl += (
