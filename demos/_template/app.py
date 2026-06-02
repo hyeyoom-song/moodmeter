@@ -26,6 +26,8 @@ EMOTIONS = [
 # 세션 상태 초기화
 if 'mood_data' not in st.session_state:
     st.session_state.mood_data = {name: {} for name in STUDENT_LIST + ["선생님"]}
+elif "선생님" not in st.session_state.mood_data:
+    st.session_state.mood_data["선생님"] = {}
 if 'hero_pick_history' not in st.session_state:
     st.session_state.hero_pick_history = {}
 if 'praise_shower' not in st.session_state:
