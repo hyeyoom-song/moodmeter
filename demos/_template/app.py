@@ -285,68 +285,68 @@ elif menu == "오늘의 주인공":
     if current_student not in st.session_state.student_gift_opening:
         st.session_state.student_gift_opening[current_student] = False
 
-    if today_hero:
-        # 이미 주인공이 정해진 경우
+    if not st.session_state.student_gift_opening[current_student]:
+        # 아직 확인 버튼을 누르지 않은 경우
         st.markdown(
             """
-            <div style='text-align:center; margin: 40px 0;'>
-                <div style='font-size:180px; margin-bottom:20px;'>🎉</div>
-                <div style='font-size:48px; font-weight:bold; color:#e17055; margin-bottom:30px;'>{}</div>
+            <div style='text-align:center; margin: 60px 0;'>
+                <div style='font-size:480px; display:inline-block;'>
+                    🎁
+                </div>
+                <div style='font-size:18px; color:#666; margin-top:40px; font-weight:bold;'>오늘의 주인공을 확인하세요!</div>
             </div>
-            """.format(today_hero),
+            """,
             unsafe_allow_html=True
         )
-        st.balloons()
-    else:
-        # 아직 선택되지 않은 경우
-        if not st.session_state.student_gift_opening[current_student]:
-            # 선물 상자 표시
-            st.markdown(
-                """
-                <div style='text-align:center; margin: 60px 0;'>
-                    <div style='font-size:480px; cursor:pointer; transition:transform 0.1s; display:inline-block;' id='giftbox' onclick='this.style.transform="scale(0.95)"; setTimeout(() => this.style.transform="scale(1)", 100);'>
-                        🎁
-                    </div>
-                    <div style='font-size:18px; color:#666; margin-top:40px; font-weight:bold;'>선물상자를 클릭하세요!</div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
 
-            # 선물 상자 클릭 버튼
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col2:
-                if st.button("🎁 열기", key="open_gift", use_container_width=True):
-                    st.session_state.student_gift_opening[current_student] = True
-                    st.rerun()
-        else:
-            # 열리는 애니메이션 및 결과 표시
+        # 확인 버튼
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("🎁 오늘의 주인공 확인", key="open_gift", use_container_width=True):
+                st.session_state.student_gift_opening[current_student] = True
+                st.rerun()
+    else:
+        # 확인 버튼을 누른 경우
+        # 북소리 애니메이션 표시
+        st.markdown(
+            """
+            <div style='text-align:center; margin: 60px 0;'>
+                <div style='font-size:300px; margin-bottom:20px;'>🥁</div>
+                <div style='font-size:32px; font-weight:bold; color:#e17055; animation: pulse 0.5s infinite;'>
+                    두둠... 두둠... 두둠...
+                </div>
+                <style>
+                    @keyframes pulse {
+                        0%, 100% { opacity: 1; }
+                        50% { opacity: 0.5; }
+                    }
+                </style>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        
+        # 1초 대기 (북소리 효과)
+        time.sleep(1)
+        
+        # 주인공 표시 또는 선택
+        if today_hero:
+            # 이미 주인공이 선정된 경우
             st.markdown(
                 """
-                <div style='text-align:center; margin: 60px 0;'>
-                    <div style='font-size:300px; margin-bottom:20px;'>🥁</div>
-                    <div style='font-size:32px; font-weight:bold; color:#e17055; animation: pulse 0.5s infinite;'>
-                        두둠... 두둠... 두둠...
-                    </div>
-                    <style>
-                        @keyframes pulse {
-                            0%, 100% { opacity: 1; }
-                            50% { opacity: 0.5; }
-                        }
-                    </style>
+                <div style='text-align:center; margin: 40px 0;'>
+                    <div style='font-size:180px; margin-bottom:20px;'>🎉</div>
+                    <div style='font-size:48px; font-weight:bold; color:#e17055; margin-bottom:30px;'>{}</div>
                 </div>
-                """,
+                """.format(today_hero),
                 unsafe_allow_html=True
             )
-            
-            # 2초 대기 (북소리 효과)
-            time.sleep(2)
-            
-            # 주인공 선택
+            st.balloons()
+        else:
+            # 첫 번째 학생이 확인하는 경우 - 주인공 선택
             if len(available_names) > 0:
                 winner = random.choice(available_names)
                 st.session_state.hero_pick_history[today_key] = winner
-                st.session_state.student_gift_opening[current_student] = False
                 st.rerun()
             else:
                 st.error("선택할 학생이 없습니다!")
