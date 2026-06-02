@@ -351,3 +351,118 @@ elif menu == "오늘의 주인공":
                 st.error("선택할 학생이 없습니다!")
                 st.session_state.student_gift_opening[current_student] = False
                 st.stop()
+
+        # 이제 애니메이션을 완료했으므로 상태 업데이트
+        st.session_state.student_gift_viewed[current_student] = True
+        
+        st.markdown(
+            """
+            <div style='text-align:center; margin: 40px 0;'>
+                <div style='font-size:180px; margin-bottom:20px;'>🎉</div>
+                <div style='font-size:48px; font-weight:bold; color:#e17055; margin-bottom:30px;'>{}</div>
+            </div>
+            """.format(today_hero),
+            unsafe_allow_html=True
+        )
+        st.balloons()
+
+
+#############################################
+# 3. 오늘의 칭찬샤워 PAGE (수정됨)
+#############################################
+elif menu == "오늘의 칭찬샤워":
+    st.title('학급 정서 기록🧡')
+    st.header("오늘의 칭찬샤워 💌")
+    
+    current_student = st.session_state.logged_in_student
+    today_hero = st.session_state.hero_pick_history.get(today_key, None)
+    
+    if not today_hero:
+        st.warning("아직 오늘의 주인공이 선정되지 않았습니다! '오늘의 주인공' 탭에서 뽑아주세요.")
+    else:
+        st.subheader(f"오늘의 주인공: {today_hero}")
+        if today_key not in st.session_state.praise_shower:
+            st.session_state.praise_shower[today_key] = []
+
+        praise_text = st.text_area(f"{today_hero}에게 칭찬 한마디 남기기!", key="praise_text")
+        if st.button("칭찬 남기기"):
+            if praise_text.strip():
+                # 📢 [수정] 칭찬을 저장할 때 (작성자 이름, 칭찬내용) 튜플 형태로 보관합니다.
+                st.session_state.praise_shower[today_key].append((current_student, praise_text.strip()))
+                st.success("칭찬이 정상적으로 등록되었습니다!")
+                st.rerun()
+            else:
+                st.warning("칭찬을 입력해 주세요.")
+
+        st.subheader("모두가 남긴 칭찬들 🌻")
+        all_praises = st.session_state.praise_shower[today_key]
+        if "editing_praise_idx" not in st.session_state:
+            st.session_state.editing_praise_idx = None
+        if "editing_praise_text" not in st.session_state:
+            st.session_state.editing_praise_text = ""
+
+        # 화면 리스트 출력 및 수정 로직
+        for idx, item in enumerate(all_praises):
+            # 이전 버전 데이터(텍스트만 있는 경우)와 호환성 유지용 방어 코드
+            if isinstance(item, tuple):
+                writer, text = item
+            else:
+                writer, text = "알 수 없음", item
+
+            col1, col2 = st.columns([8, 1])
+            with col1:
+                if st.session_state.editing_praise_idx == idx:
+                    new_text = st.text_area(f"칭찬 수정 ({idx+1})", value=st.session_state.editing_praise_text, key=f"edit_{idx}")
+                    save = st.button("저장", key=f"save_{idx}")
+                    cancel = st.button("취소", key=f"cancel_{idx}")
+                    if save:
+                        if new_text.strip():
+                            # 📢 [수정] 수정할 때도 원래 작성자 이름(writer)을 유지하며 업데이트합니다.
+                            st.session_state.praise_shower[today_key][idx] = (writer, new_text.strip())
+                            st.session_state.editing_praise_idx = None
+                            st.session_state.editing_praise_text = ""
+                            st.success("칭찬이 정상적으로 수정되었습니다!")
+                            st.rerun()
+                        else:
+                            st.warning("수정할 내용을 입력하세요.")
+                    if cancel:
+                        st.session_state.editing_praise_idx = None
+                        st.session_state.editing_praise_text = ""
+                        st.rerun()
+                else:
+                    st.info(f"{idx+1}. {text}")
+            with col2:
+                if st.session_state.editing_praise_idx != idx:
+                    if st.button("수정", key=f"editbtn_{idx}"):
+                        st.session_state.editing_praise_idx = idx
+                        st.session_state.editing_praise_text = text
+                        st.rerun()
+
+        # 엑셀(CSV) 다운로드 데이터프레임 빌드 파트
+        if all_praises:
+            # 다운로드할 데이터를 분리해 리스트화
+            export_writers = []
+            export_texts = []
+            for item in all_praises:
+                if isinstance(item, tuple):
+                    export_writers.append(item[0])
+                    export_texts.append(item[1])
+                else:
+                    export_writers.append("알 수 없음")
+                    export_texts.append(item)
+
+            # 📢 [수정] 데이터프레임에 "작성자" 열을 새로 배치했습니다.
+            praise_df = pd.DataFrame({
+                "주인공": [today_hero] * len(all_praises),
+                "날짜": [today_key] * len(all_praises),
+                "작성자": export_writers,
+                "칭찬": export_texts
+            })
+            
+            csv = praise_df.to_csv(index=False).encode('utf-8-sig')
+            st.download_button(
+                "칭찬샤워 엑셀로 다운로드",
+                data=csv,
+                file_name=f"praise_{today_key}.csv",
+                mime='text/csv'
+            )
