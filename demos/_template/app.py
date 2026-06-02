@@ -280,18 +280,16 @@ elif menu == "오늘의 주인공":
     exclude_name = st.session_state.hero_pick_history.get(yesterday_key, None)
     available_names = [name for name in STUDENT_LIST if name != exclude_name]
 
-    # 오늘 주인공 및 내가 열었는지 여부 확인 (학생별)
+    # 오늘 주인공 및 내가 직접 열었는지 여부 확인 (학생별)
     today_hero = st.session_state.hero_pick_history.get(today_key, None)
-    hero_revealed = st.session_state.hero_revealed.get(current_student, {}).get(today_key, False)
+    my_revealed = st.session_state.hero_revealed.get(current_student, {}).get(today_key, False)
 
     # 학생별 세션 상태 초기화
     if current_student not in st.session_state.student_gift_opening:
         st.session_state.student_gift_opening[current_student] = False
-    if current_student not in st.session_state.student_gift_viewed:
-        st.session_state.student_gift_viewed[current_student] = False
 
-    if hero_revealed and today_hero:
-        # 상황 1: 내가 이미 선물 상자를 열어본 경우 → 결과만 표시
+    if my_revealed and today_hero:
+        # 상황 1: 내가 이미 직접 열어본 경우 → 결과만 표시
         st.markdown(
             """
             <div style='text-align:center; margin: 40px 0;'>
@@ -303,7 +301,7 @@ elif menu == "오늘의 주인공":
         )
 
     elif not st.session_state.student_gift_opening[current_student]:
-        # 상황 2: 아직 버튼을 누르지 않은 경우 → 선물 상자 표시
+        # 상황 2: 버튼을 아직 누르지 않은 경우 → 선물 상자 표시
         st.markdown(
             """
             <div style='text-align:center; margin: 80px 0;'>
@@ -320,7 +318,7 @@ elif menu == "오늘의 주인공":
                 st.rerun()
 
     else:
-        # 상황 3: 버튼을 눌러서 처음으로 공개하는 과정 (북소리)
+        # 상황 3: 버튼을 눌렀고 처음 공개하는 과정 (북소리 → 결과)
         placeholder = st.empty()
         with placeholder.container():
             st.markdown(
@@ -347,12 +345,14 @@ elif menu == "오늘의 주인공":
                 st.session_state.student_gift_opening[current_student] = False
                 st.stop()
 
-        # 내 공개 완료 상태를 학생별로 저장 후 rerun → 상황 1로 이동
+        # 내 공개 완료 상태를 학생별로 저장
         if current_student not in st.session_state.hero_revealed:
             st.session_state.hero_revealed[current_student] = {}
         st.session_state.hero_revealed[current_student][today_key] = True
-        st.session_state.student_gift_viewed[current_student] = True
+        st.balloons()
         st.rerun()
+
+
 
 
 
