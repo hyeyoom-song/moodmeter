@@ -127,9 +127,28 @@ if st.sidebar.button("로그아웃"):
     st.rerun()
 
 st.sidebar.title("메뉴")
+is_teacher = (st.session_state.logged_in_student == "선생님")
+
+if is_teacher:
+    menu_options = [
+        "🎨 무드미터",
+        "📈 감정 그래프",
+        "👥 오늘의 학급 감정",
+        "🎁 오늘의 주인공",
+        "📅 이달의 배정표",
+        "💌 오늘의 칭찬샤워",
+    ]
+else:
+    menu_options = [
+        "🎨 무드미터",
+        "📈 감정 그래프",
+        "🎁 오늘의 주인공",
+        "💌 오늘의 칭찬샤워",
+    ]
+
 menu = st.sidebar.radio(
     "이동",
-    ["🎨 무드미터", "📈 감정 그래프", "🎁 오늘의 주인공", "📅 이달의 배정표", "💌 오늘의 칭찬샤워"],
+    menu_options,
     index=0,
     key="sidebar_menu",
 )
@@ -296,9 +315,9 @@ elif menu == "📈 감정 그래프":
 
     selected_name = st.session_state.logged_in_student
 
-    # 대상자 선택 (선생님은 전체 학생 선택 가능)
+    # 대상자 선택 (선생님은 본인 포함 전체 선택 가능)
     if selected_name == "선생님":
-        view_name = st.selectbox("학생 선택", STUDENT_LIST, key="graph_student_sel")
+        view_name = st.selectbox("대상 선택", ["선생님"] + STUDENT_LIST, key="graph_student_sel")
     else:
         view_name = selected_name
         st.info(f"😊 {view_name}의 감정 흐름")
@@ -426,7 +445,143 @@ elif menu == "📈 감정 그래프":
         st.plotly_chart(bar_fig, use_container_width=True)
 
 #############################################
-# 3. 🎁 오늘의 주인공 PAGE (월별 배정)
+# 3. 👥 오늘의 학급 감정 PAGE (선생님 전용)
+#############################################
+elif menu == "👥 오늘의 학급 감정":
+    st.title("학급 정서 기록🧡")
+    st.header("👥 오늘의 학급 감정 현황")
+    st.caption(f"📅 {today_key} 기준 · 오전·오후 기록 현황")
+
+    # ── 날짜 선택 ────────────────────────────────────────────────────────────
+    view_date = st.date_input("날짜 선택", value=today, key="class_mood_date")
+    view_year  = view_date.year
+    view_month = view_date.month
+    view_day   = view_date.day
+    view_ym    = f"{view_year}-{str(view_month).zfill(2)}"
+
+    # ── 학생별 오전/오후 감정 수집 ────────────────────────────────────────────
+    rows = []
+    for sname in STUDENT_LIST:
+        day_dict = st.session_state.mood_data.get(sname, {}).get(view_ym, {}).get(view_day, {})
+        am_idx = day_dict.get("오전") if isinstance(day_dict, dict) else None
+        pm_idx = day_dict.get("오후") if isinstance(day_dict, dict) else None
+
+        am_label = f"{EMOTIONS[am_idx][1]} {EMOTIONS[am_idx][0]}" if am_idx is not None else "—"
+        pm_label = f"{EMOTIONS[pm_idx][1]} {EMOTIONS[pm_idx][0]}" if pm_idx is not None else "—"
+        am_score = EMOTIONS[am_idx][3] if am_idx is not None else None
+        pm_score = EMOTIONS[pm_idx][3] if pm_idx is not None else None
+        am_color = EMOTIONS[am_idx][2] if am_idx is not None else "#f0f0f0"
+        pm_color = EMOTIONS[pm_idx][2] if pm_idx is not None else "#f0f0f0"
+
+        rows.append({
+            "이름": sname,
+            "오전_감정": am_label,
+            "오전_점수": am_score,
+            "오전_색": am_color,
+            "오후_감정": pm_label,
+            "오후_점수": pm_score,
+            "오후_색": pm_color,
+        })
+
+    # ── 카드형 테이블 ─────────────────────────────────────────────────────────
+    header_html = """
+    <style>
+    .class-table{width:100%;border-collapse:collapse;margin-top:8px;}
+    .class-table th{background:#f5f0ff;color:#555;font-size:0.9em;padding:8px 6px;border-bottom:2px solid #ddd;text-align:center;}
+    .class-table td{padding:7px 6px;border-bottom:1px solid #eee;text-align:center;font-size:0.95em;vertical-align:middle;}
+    .emo-chip{display:inline-block;border-radius:20px;padding:3px 10px;font-weight:600;font-size:0.88em;color:#222;}
+    .score-pos{color:#2ecc71;font-weight:bold;}
+    .score-neg{color:#e74c3c;font-weight:bold;}
+    .score-neu{color:#aaa;}
+    </style>
+    <table class='class-table'>
+    <tr>
+      <th>이름</th>
+      <th>🌤 오전 감정</th>
+      <th>점수</th>
+      <th>🌆 오후 감정</th>
+      <th>점수</th>
+    </tr>
+    """
+
+    def score_html(s):
+        if s is None: return "<span class='score-neu'>—</span>"
+        cls = "score-pos" if s > 0 else ("score-neg" if s < 0 else "score-neu")
+        return f"<span class='{cls}'>{'+' if s > 0 else ''}{s}</span>"
+
+    body_html = ""
+    for r in rows:
+        am_bg   = r["오전_색"]
+        pm_bg   = r["오후_색"]
+        am_text = r["오전_감정"]
+        pm_text = r["오후_감정"]
+        am_chip = f"<span class='emo-chip' style='background:{am_bg};'>{am_text}</span>"
+        pm_chip = f"<span class='emo-chip' style='background:{pm_bg};'>{pm_text}</span>"
+        name    = r["이름"]
+        body_html += (
+            f"<tr>"
+            f"<td><b>{name}</b></td>"
+            f"<td>{am_chip}</td>"
+            f"<td>{score_html(r['오전_점수'])}</td>"
+            f"<td>{pm_chip}</td>"
+            f"<td>{score_html(r['오후_점수'])}</td>"
+            f"</tr>"
+        )
+
+    st.markdown(header_html + body_html + "</table>", unsafe_allow_html=True)
+
+    # ── 학급 평균 점수 요약 ───────────────────────────────────────────────────
+    st.markdown("---")
+    st.subheader("📊 학급 평균 감정 점수")
+
+    all_am = [r["오전_점수"] for r in rows if r["오전_점수"] is not None]
+    all_pm = [r["오후_점수"] for r in rows if r["오후_점수"] is not None]
+    all_scores = all_am + all_pm
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("오전 평균", f"{sum(all_am)/len(all_am):+.1f}" if all_am else "—")
+    c2.metric("오후 평균", f"{sum(all_pm)/len(all_pm):+.1f}" if all_pm else "—")
+    c3.metric("전체 평균", f"{sum(all_scores)/len(all_scores):+.1f}" if all_scores else "—")
+
+    # ── 감정 분포 도넛 차트 (오전+오후 합산) ──────────────────────────────────
+    emotion_counts = {}
+    for r in rows:
+        for key in ["오전_감정", "오후_감정"]:
+            label = r[key]
+            if label != "—":
+                emotion_counts[label] = emotion_counts.get(label, 0) + 1
+
+    if emotion_counts:
+        st.markdown("#### 오늘 학급에서 가장 많이 느낀 감정")
+        donut_labels = list(emotion_counts.keys())
+        donut_values = list(emotion_counts.values())
+        # 색상 매핑
+        color_map = {f"{e[1]} {e[0]}": e[2] for e in EMOTIONS}
+        donut_colors = [color_map.get(lb, "#ccc") for lb in donut_labels]
+
+        donut_fig = go.Figure(go.Pie(
+            labels=donut_labels,
+            values=donut_values,
+            hole=0.5,
+            marker=dict(colors=donut_colors, line=dict(color="#fff", width=2)),
+            textinfo="label+value",
+            hovertemplate="%{label}<br>%{value}명<extra></extra>",
+        ))
+        donut_fig.update_layout(
+            height=320,
+            margin=dict(l=20, r=20, t=20, b=20),
+            showlegend=False,
+            paper_bgcolor="white",
+        )
+        st.plotly_chart(donut_fig, use_container_width=True)
+
+    # ── 미기록 학생 안내 ──────────────────────────────────────────────────────
+    unrecorded = [r["이름"] for r in rows if r["오전_감정"] == "—" and r["오후_감정"] == "—"]
+    if unrecorded:
+        st.warning(f"아직 오늘 감정을 기록하지 않은 학생: {', '.join(unrecorded)}")
+
+#############################################
+# 4. 🎁 오늘의 주인공 PAGE (월별 배정)
 #############################################
 elif menu == "🎁 오늘의 주인공":
     st.title("학급 정서 기록🧡")
@@ -511,7 +666,7 @@ elif menu == "🎁 오늘의 주인공":
         st.rerun()
 
 #############################################
-# 4. 📅 이달의 배정표 PAGE (선생님 전용)
+# 5. 📅 이달의 배정표 PAGE (선생님 전용)
 #############################################
 elif menu == "📅 이달의 배정표":
     st.title("학급 정서 기록🧡")
@@ -571,7 +726,7 @@ elif menu == "📅 이달의 배정표":
     )
 
 #############################################
-# 5. 💌 오늘의 칭찬샤워 PAGE
+# 6. 💌 오늘의 칭찬샤워 PAGE
 #############################################
 elif menu == "💌 오늘의 칭찬샤워":
     st.title("학급 정서 기록🧡")
